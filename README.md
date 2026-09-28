@@ -5,7 +5,7 @@ Jackbox-style: one TV/desktop screen everyone watches, and each player's phone a
 private controller. Built from the design handoff in
 `design_handoff_avalon_intern_court/` (not committed).
 
-**Live:** https://avalon-intern-court.vercel.app
+**Live:** https://avalon-online.kylehagerman.dev
 
 ## How to play
 
