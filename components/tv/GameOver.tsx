@@ -21,6 +21,10 @@ export function GameOver({
   }, []);
   const good = g.winner === "good";
   const w = g.cast.length > 8 ? 190 : 216;
+  const gap = 28;
+  // capping the row width splits large casts into two even rows instead of a full row plus stragglers
+  const perRow = Math.ceil(g.cast.length / (g.cast.length > 8 ? 2 : 1));
+  const rowWidth = perRow * w + (perRow - 1) * gap;
 
   return (
     <div style={{ position: "absolute", inset: 0 }}>
@@ -57,9 +61,12 @@ export function GameOver({
           top: 230,
           left: 0,
           right: 0,
+          width: rowWidth,
+          margin: "0 auto",
           display: "flex",
+          flexWrap: "wrap",
           justifyContent: "center",
-          gap: 28,
+          gap,
         }}
       >
         {g.cast.map(({ name, role }) => {
