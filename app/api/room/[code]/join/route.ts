@@ -6,7 +6,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
   const { code: rawCode } = await ctx.params;
   const code = rawCode.toUpperCase();
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") throw new GameError("Malformed request");
     const store = getStore();
     const row = await store.get(code);
     if (!row) {

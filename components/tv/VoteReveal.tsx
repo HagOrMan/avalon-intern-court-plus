@@ -16,6 +16,13 @@ export function VoteReveal({ v, clockOffset }: { v: TvView; clockOffset: number 
   const names = v.proposalNames;
   const nameList = names.length === 2 ? names.join(" and ") : names.join(", ");
 
+  // past 8 voters the cards split into two even rows, shrunk so both clear the result stamp
+  const twoRows = r.votes.length > 8;
+  const cardW = twoRows ? 120 : 184;
+  const cardH = twoRows ? 166 : 256;
+  const gap = 44;
+  const perRow = Math.ceil(r.votes.length / (twoRows ? 2 : 1));
+
   return (
     <div style={{ position: "absolute", inset: 0 }}>
       <QuestTrack v={v} />
@@ -36,19 +43,22 @@ export function VoteReveal({ v, clockOffset }: { v: TvView; clockOffset: number 
       <div
         style={{
           position: "absolute",
-          top: 340,
+          top: twoRows ? 300 : 340,
           left: 0,
           right: 0,
+          width: perRow * cardW + (perRow - 1) * gap,
+          margin: "0 auto",
           display: "flex",
+          flexWrap: "wrap",
           justifyContent: "center",
-          gap: 44,
+          gap: twoRows ? `20px ${gap}px` : gap,
         }}
       >
         {r.votes.map(({ name, vote }) => {
           const approve = vote === "approve";
           return (
-            <div key={name} style={{ textAlign: "center" }} className={burning ? "burn-away" : ""}>
-              <div className="flip-card" style={{ width: 184, height: 256 }}>
+            <div key={name} style={{ textAlign: "center", width: cardW }} className={burning ? "burn-away" : ""}>
+              <div className="flip-card" style={{ width: cardW, height: cardH }}>
                 <div className={`flip-inner${flipped ? " flipped" : ""}`}>
                   {/* face */}
                   <div
@@ -66,8 +76,8 @@ export function VoteReveal({ v, clockOffset }: { v: TvView; clockOffset: number 
                           }
                     }
                   >
-                    <span style={{ fontSize: 52 }}>{approve ? "◯" : "◆"}</span>
-                    <span style={{ font: "600 24px var(--font-body)", letterSpacing: "0.1em" }}>
+                    <span style={{ fontSize: twoRows ? 40 : 52 }}>{approve ? "◯" : "◆"}</span>
+                    <span style={{ font: `600 ${twoRows ? 20 : 24}px var(--font-body)`, letterSpacing: "0.1em" }}>
                       {approve ? "APPROVE" : "REJECT"}
                     </span>
                   </div>
@@ -86,7 +96,9 @@ export function VoteReveal({ v, clockOffset }: { v: TvView; clockOffset: number 
                   </div>
                 </div>
               </div>
-              <div style={{ font: "500 26px var(--font-body)", marginTop: 16 }}>{name}</div>
+              <div style={{ font: `500 ${twoRows ? 22 : 26}px var(--font-body)`, marginTop: twoRows ? 10 : 16 }}>
+                {name}
+              </div>
             </div>
           );
         })}

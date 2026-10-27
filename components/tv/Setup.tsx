@@ -9,7 +9,8 @@ import { defaultSpecials, evilCount, isEvil, twoFailMission } from "@/lib/rules"
 function advisory(v: TvView): string {
   const n = v.playerCount;
   const off = (r: RoleKey) => v.config.disabled.includes(r);
-  if (off("merlin")) return "Without Merlin the court plays blind — and no blade falls at the end.";
+  if (off("merlin"))
+    return "Without Merlin the court plays blind — his Mistress rests with him, and no blade falls at the end.";
   if (!v.config.assassination)
     return "The blade is sheathed: three quests alone decide it, and Merlin may steer openly.";
   if (!off("mordred") && !off("morgana") && n === 7)
@@ -51,6 +52,8 @@ export function TvSetup({
 
   const roleRow = (r: RoleKey) => {
     const off = disabled.includes(r);
+    // the server keeps the Mistress resting while Merlin rests
+    const locked = r === "mistress" && disabled.includes("merlin");
     return (
       <div key={r} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ opacity: off ? 0.45 : 1 }}>
@@ -63,9 +66,11 @@ export function TvSetup({
         </span>
         <button
           onClick={() => toggle(r)}
+          disabled={locked}
           style={
             off
               ? {
+                  opacity: locked ? 0.5 : 1,
                   font: "600 20px var(--font-body)",
                   letterSpacing: "0.1em",
                   color: "rgba(237,230,214,0.6)",

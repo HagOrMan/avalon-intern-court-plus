@@ -76,7 +76,8 @@ export function addPlayer(s: GameState, p: { id: string; token: string; name: st
   return { ...s, players: [...s.players, player] };
 }
 
-export function kickPlayer(s: GameState, playerId: string): GameState {
+/** Host kick or a player leaving their own seat. */
+export function removePlayer(s: GameState, playerId: string): GameState {
   assert(s.phase === "lobby" || s.phase === "setup", "Seats are locked once the court convenes");
   const players = s.players
     .filter((p) => p.id !== playerId)
@@ -99,6 +100,8 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
   const n = s.players.length;
   const legal = defaultSpecials(n);
   const disabled = (cfg.disabled ?? s.config.disabled).filter((r) => legal.includes(r));
+  // the Mistress's sight is built around Merlin; without him she would see Morgana alone
+  if (disabled.includes("merlin") && !disabled.includes("mistress")) disabled.push("mistress");
   const flagWanted = cfg.assassinFlag ?? s.config.assassinFlag;
   assert(isEvil(flagWanted), "The assassin flag belongs to Evil");
   const rejectionVariant = cfg.rejectionVariant ?? s.config.rejectionVariant;
@@ -117,6 +120,7 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
 export function beginCourt(s: GameState, rng: () => number = Math.random): GameState {
   assert(s.phase === "setup", "Not in Court Setup");
   const n = s.players.length;
+  assert(n >= MIN_PLAYERS, `Need at least ${MIN_PLAYERS} players`);
   const roleList = buildRoleList(n, s.config.disabled);
   const dealt = shuffle(roleList, rng);
   const roles: Record<string, RoleKey> = {};

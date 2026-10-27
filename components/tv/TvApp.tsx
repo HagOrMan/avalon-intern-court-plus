@@ -126,12 +126,22 @@ export function TvApp({
       key = `blade:${v.assassinReveal.revealAt}`;
     }
     if (dueAt == null || ackedRef.current === key) return;
+    let cancelled = false;
+    let t: ReturnType<typeof setTimeout>;
+    const attempt = async (tries: number) => {
+      if (await act("ack")) {
+        ackedRef.current = key;
+        return;
+      }
+      // refused (clock skew) or the request failed — try again rather than wait out the server's grace period
+      if (!cancelled && tries < 8) t = setTimeout(() => attempt(tries + 1), 600);
+    };
     const wait = Math.max(0, dueAt - (Date.now() + clockOffset));
-    const t = setTimeout(() => {
-      ackedRef.current = key;
-      act("ack");
-    }, wait);
-    return () => clearTimeout(t);
+    t = setTimeout(() => attempt(1), wait);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [v, act, clockOffset]);
 
   if (fatal) {

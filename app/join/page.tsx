@@ -38,17 +38,22 @@ function JoinInner() {
         setAutoTried(true);
         return;
       }
-      const res = await fetch(`/api/room/${candidate.code}/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: candidate.token }),
-      });
-      if (res.ok) {
-        setCreds(candidate);
-      } else {
-        localStorage.removeItem(`court:player:${candidate.code}`);
+      try {
+        const res = await fetch(`/api/room/${candidate.code}/join`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: candidate.token }),
+        });
+        if (res.ok) {
+          setCreds(candidate);
+        } else {
+          localStorage.removeItem(`court:player:${candidate.code}`);
+        }
+      } catch {
+        // offline: keep the saved seat so a retry from the form can still reclaim it
+      } finally {
+        setAutoTried(true);
       }
-      setAutoTried(true);
     };
     const lastCreds = (): Creds | null => {
       try {
@@ -77,7 +82,7 @@ function JoinInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, token: existing?.token }),
       });
-      const body = await res.json();
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(body.error ?? "The court did not answer");
         return;
@@ -86,6 +91,8 @@ function JoinInner() {
       localStorage.setItem(`court:player:${c}`, JSON.stringify(next));
       localStorage.setItem("court:player:last", c);
       setCreds(next);
+    } catch {
+      setError("Could not reach the court — check the connection.");
     } finally {
       setBusy(false);
     }

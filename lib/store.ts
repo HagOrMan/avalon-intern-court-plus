@@ -5,6 +5,8 @@ import { GameError } from "./engine";
 
 export interface RoomStore {
   get(code: string): Promise<{ state: GameState; version: number } | null>;
+  /** version only — one cheap read for stream polling; null if the room is gone */
+  getVersion(code: string): Promise<number | null>;
   /** create iff absent; false if the code is taken */
   create(code: string, state: GameState): Promise<boolean>;
   /** compare-and-set; false on version conflict */
@@ -13,6 +15,8 @@ export interface RoomStore {
   getSeen(code: string): Promise<Record<string, number>>;
   /** write a heartbeat key so Upstash never sees the database as inactive */
   keepAlive(now: number): Promise<"redis" | "memory">;
+  /** sliding-window limiter: true (and counts the hit) if under `limit` hits in the last `windowMs` */
+  rateLimit(key: string, limit: number, windowMs: number, now: number): Promise<boolean>;
 }
 
 /* ---------- in-memory store (local dev, single process) ---------- */
@@ -23,13 +27,20 @@ interface MemRoom {
   seen: Record<string, number>;
 }
 
-const g = globalThis as unknown as { __courtRooms?: Map<string, MemRoom> };
+const g = globalThis as unknown as {
+  __courtRooms?: Map<string, MemRoom>;
+  __courtLimits?: Map<string, number[]>;
+};
 const memRooms = (g.__courtRooms ??= new Map<string, MemRoom>());
+const memLimits = (g.__courtLimits ??= new Map<string, number[]>());
 
 const memoryStore: RoomStore = {
   async get(code) {
     const r = memRooms.get(code);
     return r ? { state: r.state, version: r.version } : null;
+  },
+  async getVersion(code) {
+    return memRooms.get(code)?.version ?? null;
   },
   async create(code, state) {
     if (memRooms.has(code)) return false;
@@ -53,6 +64,15 @@ const memoryStore: RoomStore = {
   async keepAlive() {
     return "memory";
   },
+  async rateLimit(key, limit, windowMs, now) {
+    const hits = (memLimits.get(key) ?? []).filter((t) => t > now - windowMs);
+    if (hits.length >= limit) {
+      memLimits.set(key, hits);
+      return false;
+    }
+    memLimits.set(key, [...hits, now]);
+    return true;
+  },
 };
 
 /* ---------- Upstash Redis store ---------- */
@@ -67,6 +87,19 @@ end
 return 0
 `;
 
+// sorted set of hit timestamps; members carry a random suffix so same-ms hits don't collapse
+const RATE_LIMIT_SCRIPT = `
+local now = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, now - window)
+if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[3]) then
+  return 0
+end
+redis.call('ZADD', KEYS[1], now, ARGV[4])
+redis.call('PEXPIRE', KEYS[1], window)
+return 1
+`;
+
 function redisStore(redis: Redis): RoomStore {
   const kState = (c: string) => `court:${c}:state`;
   const kVer = (c: string) => `court:${c}:ver`;
@@ -79,6 +112,10 @@ function redisStore(redis: Redis): RoomStore {
       ]);
       if (!state || ver == null) return null;
       return { state, version: Number(ver) };
+    },
+    async getVersion(code) {
+      const ver = await redis.get<string | number>(kVer(code));
+      return ver == null ? null : Number(ver);
     },
     async create(code, state) {
       const ok = await redis.eval(
@@ -112,6 +149,14 @@ function redisStore(redis: Redis): RoomStore {
     async keepAlive(now) {
       await redis.set("court:keepalive", now, { ex: 7 * 24 * 60 * 60 });
       return "redis";
+    },
+    async rateLimit(key, limit, windowMs, now) {
+      const ok = await redis.eval(
+        RATE_LIMIT_SCRIPT,
+        [`court:rl:${key}`],
+        [String(now), String(windowMs), String(limit), `${now}-${crypto.randomUUID()}`]
+      );
+      return ok === 1;
     },
   };
 }

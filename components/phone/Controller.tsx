@@ -151,8 +151,16 @@ export function Controller({
 }) {
   const { view: v, fatal, toast, act } = useRoom<PlayerView>(code, token);
   const [showLeave, setShowLeave] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
-  if (fatal) {
+  const leave = async () => {
+    setLeaving(true);
+    if (await act("leave")) onLeave();
+    else setLeaving(false);
+  };
+
+  // the stream reports our own departure as a kick; don't flash that while leaving
+  if (fatal && !leaving) {
     return (
       <main className="phone-screen" style={{ justifyContent: "center", gap: 18, textAlign: "center" }}>
         <div className="serif" style={{ font: "600 24px var(--font-serif)" }}>{fatal}</div>
@@ -202,7 +210,7 @@ export function Controller({
             {showLeave && (
               <div className="pause-overlay">
                 <div className="serif" style={{ font: "600 22px var(--font-serif)" }}>Leave the court?</div>
-                <button className="btn-ghost" style={{ maxWidth: 260 }} onClick={onLeave}>
+                <button className="btn-ghost" style={{ maxWidth: 260 }} disabled={leaving} onClick={leave}>
                   Leave
                 </button>
                 <button className="btn-gold" style={{ maxWidth: 260 }} onClick={() => setShowLeave(false)}>

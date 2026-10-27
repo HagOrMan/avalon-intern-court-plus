@@ -6,11 +6,11 @@ import {
   ackVoteReveal,
   assassinate,
   beginCourt,
-  kickPlayer,
   playAgain,
   playerReady,
   playQuestCard,
   propose,
+  removePlayer,
   startSetup,
   updateConfig,
   vote,
@@ -22,7 +22,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
   const { code: rawCode } = await ctx.params;
   const code = rawCode.toUpperCase();
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") throw new GameError("Malformed request");
     const token: string = body.token;
     const action: string = body.action;
     if (!token || !action) throw new GameError("Malformed request");
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
             if (s.phase !== "setup") throw new GameError("Not in setup");
             return { ...s, phase: "lobby" as const };
           case "kick":
-            return kickPlayer(s, body.playerId);
+            return removePlayer(s, body.playerId);
           case "ack":
             if (s.phase === "voteReveal") return ackVoteReveal(s);
             if (s.phase === "questReveal") return ackQuestReveal(s);
@@ -61,6 +62,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
       switch (action) {
         case "ready":
           return playerReady(s, player.id);
+        case "leave":
+          return removePlayer(s, player.id);
         case "propose":
           return propose(s, player.id, body.team ?? []);
         case "vote":

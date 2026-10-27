@@ -32,6 +32,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
       controller.enqueue(encoder.encode("retry: 800\n\n"));
       let lastPayload = "";
       let lastPresence = 0;
+      let state = first.state;
+      let version = first.version;
+      let seen: Record<string, number> = {};
       const startedAt = Date.now();
       let aborted = false;
       req.signal.addEventListener("abort", () => (aborted = true));
@@ -42,32 +45,46 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
           if (now - lastPresence > PRESENCE_EVERY_MS) {
             lastPresence = now;
             await store.touchSeen(code, clientId, now);
+            seen = await store.getSeen(code);
           }
-          const row = await store.get(code);
-          if (!row) {
+          // poll the version alone; the full state is only fetched when it moves
+          const ver = await store.getVersion(code);
+          if (ver == null) {
             send(JSON.stringify({ error: "expired" }));
             break;
           }
-          let state = row.state;
+          if (ver !== version) {
+            const row = await store.get(code);
+            if (!row) {
+              send(JSON.stringify({ error: "expired" }));
+              break;
+            }
+            state = row.state;
+            version = row.version;
+          }
           // lazily advance scripted beats whose TV never acked
           const advanced = autoAdvance(state, now);
           if (advanced) {
-            if (await store.update(code, row.version, { ...advanced, updatedAt: now })) {
-              state = advanced;
+            const next = { ...advanced, updatedAt: now };
+            if (await store.update(code, version, next)) {
+              state = next;
+              version += 1;
             }
           }
-          const seen = await store.getSeen(code);
           const view = isHost ? tvView(state, seen, now) : playerView(state, playerId!, seen, now);
-          if (view) {
-            // serverNow churns every tick; only resend when the rest changed
-            const { serverNow, ...rest } = view as unknown as {
-              serverNow: number;
-            } & Record<string, unknown>;
-            const payload = JSON.stringify(rest);
-            if (payload !== lastPayload) {
-              lastPayload = payload;
-              send(JSON.stringify(view));
-            }
+          if (!view) {
+            // the seat is gone: a host kick, or a self-leave (whose phone ignores this)
+            send(JSON.stringify({ error: "kicked" }));
+            break;
+          }
+          // serverNow churns every tick; only resend when the rest changed
+          const { serverNow, ...rest } = view as unknown as {
+            serverNow: number;
+          } & Record<string, unknown>;
+          const payload = JSON.stringify(rest);
+          if (payload !== lastPayload) {
+            lastPayload = payload;
+            send(JSON.stringify(view));
           }
           await new Promise((r) => setTimeout(r, POLL_MS));
         }

@@ -102,3 +102,7 @@ export const ASSASSIN_REVEAL_MS = 5000;
 export const AUTO_ADVANCE_GRACE_MS = 12000;
 
 export const ROOM_TTL_SECONDS = 12 * 60 * 60;
+
+/** courts one client IP may create per sliding window */
+export const ROOM_CREATE_LIMIT = 5;
+export const ROOM_CREATE_WINDOW_MS = 10 * 60 * 1000;

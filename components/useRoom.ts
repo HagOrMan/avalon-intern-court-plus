@@ -39,6 +39,13 @@ export function useRoom<T extends { serverNow: number }>(
             es?.close();
             return;
           }
+          if (data.error === "kicked") {
+            setFatal(
+              "The Game Master has removed you from the court. Maybe reflect on why you were kicked..."
+            );
+            es?.close();
+            return;
+          }
           offsetRef.current = data.serverNow - Date.now();
           setView(data as T);
         } catch {}
