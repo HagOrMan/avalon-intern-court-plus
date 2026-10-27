@@ -11,6 +11,8 @@ export interface RoomStore {
   update(code: string, expectedVersion: number, state: GameState): Promise<boolean>;
   touchSeen(code: string, clientId: string, now: number): Promise<void>;
   getSeen(code: string): Promise<Record<string, number>>;
+  /** write a heartbeat key so Upstash never sees the database as inactive */
+  keepAlive(now: number): Promise<"redis" | "memory">;
 }
 
 /* ---------- in-memory store (local dev, single process) ---------- */
@@ -47,6 +49,9 @@ const memoryStore: RoomStore = {
   },
   async getSeen(code) {
     return memRooms.get(code)?.seen ?? {};
+  },
+  async keepAlive() {
+    return "memory";
   },
 };
 
@@ -103,6 +108,10 @@ function redisStore(redis: Redis): RoomStore {
     async getSeen(code) {
       const h = await redis.hgetall<Record<string, number>>(kSeen(code));
       return h ?? {};
+    },
+    async keepAlive(now) {
+      await redis.set("court:keepalive", now, { ex: 7 * 24 * 60 * 60 });
+      return "redis";
     },
   };
 }
