@@ -9,7 +9,7 @@ import type {
   Vote,
 } from "./types";
 import { ROLES } from "./roles";
-import { MISSION_SIZES, isEvil, normalizeConfig, twoFailMission } from "./rules";
+import { MISSION_SIZES, failsNeeded, isEvil, normalizeConfig } from "./rules";
 import { leader } from "./engine";
 
 const PRESENCE_MS = 15000;
@@ -33,7 +33,8 @@ interface CommonView {
   players: PublicPlayer[];
   playerCount: number;
   missionSizes: number[];
-  twoFailIndex: number;
+  /** Fail cards needed per mission */
+  failsNeeded: number[];
   leaderId: string | null;
   leaderName: string | null;
   mission: number;
@@ -120,7 +121,7 @@ function common(s: GameState, seen: Record<string, number>, now: number): Common
     })),
     playerCount: s.players.length,
     missionSizes: MISSION_SIZES[s.players.length] ?? MISSION_SIZES[5],
-    twoFailIndex: twoFailMission(s.players.length),
+    failsNeeded: failsNeeded(s.players.length),
     leaderId: lead?.id ?? null,
     leaderName: lead?.name ?? null,
     mission: s.mission,

@@ -21,7 +21,7 @@ export function QuestTrack({ v }: { v: TvView }) {
       {v.missionSizes.map((size, i) => {
         const res = v.questResults[i];
         const current = i === v.mission && !res;
-        const twoFail = i === v.twoFailIndex;
+        const twoFail = v.failsNeeded[i] >= 2;
         if (res && !res.success) {
           return (
             <div

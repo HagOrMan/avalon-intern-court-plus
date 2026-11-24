@@ -154,10 +154,10 @@ P(any given seat is Evil), by player count:
 | Players | Evil | P(Evil) |   | Players | Evil | P(Evil) |
 |--------:|-----:|--------:|---|--------:|-----:|--------:|
 | 5  | 2 | 40.0% |   | 11 | 4 | 36.4% |
-| 6  | 2 | 33.3% |   | 12 | 5 | 41.7% |
+| 6  | 2 | 33.3% |   | 12 | 4 | 33.3% |
 | 7  | 3 | 42.9% |   | 13 | 5 | 38.5% |
 | 8  | 3 | 37.5% |   | 14 | 5 | 35.7% |
-| 9  | 3 | 33.3% |   | 15 | 6 | 40.0% |
+| 9  | 3 | 33.3% |   | 15 | 5 | 33.3% |
 | 10 | 4 | 40.0% |   | 16 | 6 | 37.5% |
 
 **Why the streak still happens by chance.** At 9 players, P(Evil) = 1/3 for each seat in
@@ -233,7 +233,7 @@ layout avoids mis-taps.
 
 These aren't random, and that's correct. They're listed here so nobody "fixes" them:
 
-- **Team sizes, evil count, two-Fail mission**: fixed tables in `lib/rules.ts`, from the
+- **Team sizes, evil count, two-Fail missions**: fixed tables in `lib/rules.ts`, from the
   official rules up to 10 players and the house extension above that.
 - **Deck contents**: fixed by player count and the specials the host chose.
   Randomness only decides *who* gets each card.

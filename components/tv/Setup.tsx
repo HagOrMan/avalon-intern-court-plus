@@ -10,8 +10,8 @@ import {
   bladeRole,
   deckProblem,
   evilCount,
+  failsNeeded,
   isEvil,
-  twoFailMission,
 } from "@/lib/rules";
 
 const REJECTION_ORDER: RejectionVariant[] = ["forfeit", "official", "unopposed"];
@@ -75,7 +75,7 @@ export function TvSetup({
   const n = v.playerCount;
   const evil = evilCount(n);
   const good = n - evil;
-  const twoFail = twoFailMission(n);
+  const fails = failsNeeded(n);
   const { specials } = v.config;
   const on = (r: RoleKey) => specials.includes(r);
 
@@ -218,8 +218,8 @@ export function TvSetup({
               style={{
                 width: 92,
                 height: 92,
-                border: i === twoFail ? "4px solid var(--gold)" : "4px solid rgba(201,162,75,0.6)",
-                boxShadow: i === twoFail ? "0 0 0 6px var(--surface), 0 0 0 8px rgba(201,162,75,0.5)" : undefined,
+                border: fails[i] >= 2 ? "4px solid var(--gold)" : "4px solid rgba(201,162,75,0.6)",
+                boxShadow: fails[i] >= 2 ? "0 0 0 6px var(--surface), 0 0 0 8px rgba(201,162,75,0.5)" : undefined,
                 borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
@@ -230,7 +230,7 @@ export function TvSetup({
               className="serif"
             >
               {size}
-              {i === twoFail && (
+              {fails[i] >= 2 && (
                 <span
                   style={{
                     position: "absolute",

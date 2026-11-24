@@ -3,7 +3,10 @@ import type { Config, RoleKey } from "./types";
 export const MIN_PLAYERS = 5;
 export const MAX_PLAYERS = 16;
 
-/** Mission team sizes per player count (index = mission 0..4) */
+/**
+ * Mission team sizes per player count (index = mission 0..4). 5–10 are the official
+ * tables; 11–16 are a house extension. docs/rules.md §6 has the derivation; change both together.
+ */
 export const MISSION_SIZES: Record<number, number[]> = {
   5: [2, 3, 2, 3, 3],
   6: [2, 3, 4, 3, 4],
@@ -11,30 +14,24 @@ export const MISSION_SIZES: Record<number, number[]> = {
   8: [3, 4, 4, 5, 5],
   9: [3, 4, 4, 5, 5],
   10: [3, 4, 4, 5, 5],
-  // House extension beyond the official 10-player rules
-  11: [4, 5, 5, 6, 6],
+  11: [3, 4, 5, 6, 6],
   12: [4, 5, 5, 6, 6],
-  13: [4, 5, 6, 6, 7],
-  14: [4, 5, 6, 6, 7],
-  15: [5, 6, 6, 7, 7],
-  16: [5, 6, 6, 7, 7],
+  13: [4, 5, 5, 6, 8],
+  14: [4, 5, 5, 6, 8],
+  15: [4, 5, 5, 6, 9],
+  16: [4, 5, 5, 6, 9],
 };
 
-/** mission index that needs two Fail cards (7+ players only), else -1 */
-export function twoFailMission(playerCount: number): number {
-  return playerCount >= 7 ? 3 : -1;
+/** Fail cards needed to fail each mission: the 4th needs two at 7+, the 5th too at 13+. */
+export function failsNeeded(playerCount: number): number[] {
+  if (playerCount >= 13) return [1, 1, 1, 2, 2];
+  if (playerCount >= 7) return [1, 1, 1, 2, 1];
+  return [1, 1, 1, 1, 1];
 }
 
-export function failsRequired(playerCount: number, mission: number): number {
-  return mission === twoFailMission(playerCount) ? 2 : 1;
-}
-
+/** ⌈n/3⌉: exact for every official count (5–10), extended unchanged to 16. */
 export function evilCount(playerCount: number): number {
-  if (playerCount <= 6) return 2;
-  if (playerCount <= 9) return 3;
-  if (playerCount <= 11) return 4;
-  if (playerCount <= 14) return 5;
-  return 6;
+  return Math.ceil(playerCount / 3);
 }
 
 export const GOOD_ROLES: RoleKey[] = ["merlin", "mistress", "servant"];

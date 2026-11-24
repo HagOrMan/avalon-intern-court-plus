@@ -164,9 +164,8 @@ There are two Lancelots, one starting Good and one starting Evil. Each wins with
 ### 2.5 Guinevere (online platform; needs Lancelot)
 
 Guinevere is Good. She knows which two players are the Lancelots, but not their sides.
-On the platform she is "also a possible assassination target". Open question: is she
-just a legal target (any Good player already is), or does killing her also win for
-Evil? See §5.
+She is a second assassination target: **if the Assassin names Guinevere, Evil wins**,
+just as for Merlin.
 
 ### 2.6 Trapper (from *The Resistance: Hostile Intent*)
 
@@ -193,7 +192,7 @@ The *Resistance* Plot cards.
 |---|---|---|
 | Good/Evil split, 5–10 players | `evilCount`, `lib/rules.ts` | Yes |
 | Quest team sizes, 5–10 players | `MISSION_SIZES`, `lib/rules.ts` | Yes |
-| Two-Fail 4th quest at 7+ | `twoFailMission` | Yes |
+| Two-Fail 4th quest at 7+ | `failsNeeded` | Yes (plus a two-Fail 5th quest at 13+, §6) |
 | First leader random; passes after every proposal | `firstLeaderIndex`, `ackVoteReveal`, `closeMission` in `lib/engine.ts` | Yes (plus the carry-over between games, D10) |
 | Majority approves, tie rejects | `vote` (`approve > reject`) | Yes |
 | Votes shown openly by name | `tvView.voteReveal` | Yes |
@@ -263,7 +262,7 @@ also refuses a Fail from Good.
 
 | # | Deviation | Official | App | Where |
 |---|---|---|---|---|
-| D1 | **Player range** | 5–10 | 5–16. Team sizes and evil counts for 11–16 are a house extension (see §6) | `MISSION_SIZES`, `evilCount`, `MAX_PLAYERS` |
+| D1 | **Player range** | 5–10 | 5–16. Team sizes and the two-Fail 5th quest at 13+ are a house extension; Evil keeps the official ⌈n/3⌉ (see §6) | `MISSION_SIZES`, `failsNeeded`, `evilCount`, `MAX_PLAYERS` |
 | D2 | **Default deck** | The rulebook recommends Merlin + Assassin only, for new groups | Merlin, Percival (Mistress), Mordred, Morgana, plus the Assassin when a seat is free | `DEFAULT_SPECIALS` |
 | D3 | **Blade as an add-on** | The Assassin is always its own card | The blade can ride on another Evil role, including Oberon. At 5–6 with the defaults there's no Assassin card | `bladeRole` |
 | D4 | **Merlin's ally is renamed** | Percival | "Merlin's Mistress", same ability | `lib/roles.ts` |
@@ -289,8 +288,7 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 - State: `lady: { holderId, pastHolderIds[] } | null`, plus a private `ladyResult` for the
   current holder.
 - Deal: holder = the seat to the right of the first leader. Leadership passes in
-  increasing seat index, so "right" is `leaderIndex − 1`. That's an interpretation of
-  rotation direction; confirm it.
+  increasing seat index, so "right" is the previous seat: `(leaderIndex − 1 + n) % n`.
 - Flow: a new `lady` phase. `closeMission` enters it instead of `proposal` when the next
   mission is 3, 4 or 5 (index 2–4) and the game continues, forfeits included. The holder's
   phone picks a target (not self, not a past holder). Only the holder's `playerView` gets
@@ -318,9 +316,10 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
   missions 3–5, public on the TV.
 - Cards are forced by current side (platform rule), so the phone shows the same
   two-button pattern as Good.
+- Assassination: a hit on Merlin **or Guinevere** wins for Evil (`assassinate`, the
+  reveal beat, and the game-over copy).
 - Open questions: does the Evil team see the Evil Lancelot? Do Lady checks show
-  current or starting loyalty (presumably current)? What does "Guinevere is also a
-  possible assassination target" mean exactly (§2.5)? Do Lancelots count against
+  current or starting loyalty (presumably current)? Do Lancelots count against
   Mordred/Morgana seats?
 
 **Trapper**
@@ -369,7 +368,9 @@ Official counts (Q4 at 7+ is two-Fail):
 | 9 | 3 | 3-4-4-5-5 | .24 | .12 | .12 | .41 | .05 |
 | 10 | 4 | 3-4-4-5-5 | .17 | .07 | .07 | .26 | .02 |
 
-### 6.3 Current house tables (11–16)
+### 6.3 Why the earlier house tables were replaced
+
+The first house extension used these tables:
 
 | n | Evil | Sizes | Q1 | Q2 | Q3 | Q4 | Q5 |
 |---|---|---|---|---|---|---|---|
@@ -380,34 +381,39 @@ Official counts (Q4 at 7+ is two-Fail):
 | 15 | **6** | 5-6-6-7-7 | .04 | .02 | .02 | .08 | .006 |
 | 16 | 6 | 5-6-6-7-7 | .06 | .03 | .03 | .12 | .010 |
 
-Every quest at 11–16 is harder for Good than at official 10 players. Q5 is 2–4× harder,
-and 12 and 15 are the outliers. Both of those break the ⌈n/3⌉ pattern with one extra
-Evil player.
+Under them, every quest at 11–16 was harder for Good than at official 10 players, and
+Q5 was 2–4× harder. The worst were 12 and 15, which each had one more Evil player than
+the ⌈n/3⌉ pattern.
 
-### 6.4 Proposal
+### 6.4 The tables in use (`MISSION_SIZES`, `failsNeeded`, `evilCount`)
 
-Keep **Evil = ⌈n/3⌉**, and pick team sizes whose clean-team odds sit closest to
-10 players (.17 / .07 / .07 / .26 / .02). Keep Q4 as the only two-Fail quest.
+- **Evil = ⌈n/3⌉** at every count.
+- **11–12:** team sizes chosen so each quest's clean-team odds sit closest to 10
+  players (.17 / .07 / .07 / .26 / .02). Q4 is the only two-Fail quest, as in the
+  official game.
+- **13+:** Q4 **and Q5** need two Fails. This puts more of the table on the final
+  quests. Q1–Q3 are sized as for 11–12. The two-Fail quests are sized against 10
+  players' Q4 (.26) and Q5 (.02).
 
-| n | Good | Evil | Sizes | Q1 | Q2 | Q3 | Q4 | Q5 |
+| n | Good | Evil | Sizes (\* = two Fails) | Q1 | Q2 | Q3 | Q4 | Q5 |
 |---|---|---|---|---|---|---|---|---|
-| 11 | 7 | 4 | 3-4-5-6-6 | .21 | .11 | .05 | .20 | .015 |
-| 12 | 8 | 4 | 4-5-5-6-6 | .14 | .07 | .07 | .27 | .030 |
-| 13 | 8 | 5 | 3-4-5-5-6 | .20 | .10 | .04 | .32 | .016 |
-| 14 | 9 | 5 | 4-5-5-6-6 | .13 | .06 | .06 | .24 | .028 |
-| 15 | 10 | 5 | 4-5-5-6-7 | .15 | .08 | .08 | .29 | .019 |
-| 16 | 10 | 6 | 4-5-5-6-6 | .12 | .06 | .06 | .22 | .026 |
+| 11 | 7 | 4 | 3-4-5-6\*-6 | .21 | .11 | .05 | .20 | .015 |
+| 12 | 8 | 4 | 4-5-5-6\*-6 | .14 | .07 | .07 | .27 | .030 |
+| 13 | 8 | 5 | 4-5-5-6\*-8\* | .10 | .04 | .04 | .18 | .032 |
+| 14 | 9 | 5 | 4-5-5-6\*-8\* | .13 | .06 | .06 | .24 | .063 |
+| 15 | 10 | 5 | 4-5-5-6\*-9\* | .15 | .08 | .08 | .29 | .047 |
+| 16 | 10 | 6 | 4-5-5-6\*-9\* | .12 | .06 | .06 | .22 | .024 |
 
-Trade-offs to decide on:
+Notes:
 
-- **13 players gets smaller teams than 12.** The jump to 5 Evil makes big teams almost
-  never clean. 4-4-5-6-6 is the alternative (.10 / .10 / .04 / .18 / .016): closer in
-  feel to 12, slightly harder for Good.
-- **Party feel vs. balance.** At 16 players, at most 6 people ride on any quest. To
-  involve more of the table, the lever is extra two-Fail quests rather than bigger
-  single-Fail teams. For example, a two-Fail Q5 at 13+ with Q5 = 7 gives .09 at
-  13 and .12 at 16. That's another option to compare.
-- **Choosing roles at this size.** There are only three Evil specials and at least 4
-  Evil seats from 10 players up, so the Assassin always gets its own card there. Nothing
-  needs a special case.
-- These numbers are a starting point. Playtesting at 12+ should decide the final values.
+- **Total riders across the five quests:** 24 at 11 and 26 at 12. From 13 up it's 28–29,
+  where the best-fit single-Fail tables would put 23–27.
+- **The jump from Q4 to Q5** (6 → 8 or 9) is the cost of the two-Fail final quest.
+  Smaller Q5 teams make the finale much easier for Good. For example, Q5 = 7 at 13
+  gives .09.
+- **The final quest never needs more riders than there are Good players**, so a clean
+  team always exists. At 13, Q5 equals the Good count, which matches official 5–8.
+- **Every Evil special fits.** There are only three Evil specials and at least 4 Evil
+  seats from 10 players up, so the Assassin always gets its own card there.
+- These numbers are a yardstick, not a balance proof. Playtesting at 12+ should confirm
+  them.

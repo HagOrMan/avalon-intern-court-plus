@@ -19,7 +19,7 @@ import {
   bladeRole,
   buildRoleList,
   deckProblem,
-  failsRequired,
+  failsNeeded,
   isEvil,
   normalizeConfig,
   questRevealMs,
@@ -312,7 +312,7 @@ export function playQuestCard(
   if (Object.keys(questCards).length === s.proposal.length) {
     const cards = shuffle(Object.values(questCards), rng);
     const fails = cards.filter((c) => c === "fail").length;
-    const success = fails < failsRequired(s.players.length, s.mission);
+    const success = fails < failsNeeded(s.players.length)[s.mission];
     next.phase = "questReveal";
     next.questMeta = { cards, fails, success, revealAt: now };
   }
