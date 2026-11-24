@@ -117,8 +117,9 @@ a fresh random start.
 
 ## 4. Role deal
 
-**What it does.** `buildRoleList` builds the deck: good specials, then Servants, then
-evil specials, then Minions. `beginCourt` shuffles the *whole* deck with Fisher–Yates
+**What it does.** `buildRoleList` builds the deck from the host's chosen specials: good
+specials, then Servants, then evil specials (plus an Assassin card when `bladeRole` gives
+it a free Evil seat), then Minions. `beginCourt` shuffles the *whole* deck with Fisher–Yates
 and gives card `i` to `players[i]`. Nobody "draws" in sequence. The deck is fully
 shuffled on the server before anyone gets a card.
 
@@ -215,6 +216,13 @@ went to could read the card. Randomized, the position gives no information. The 
 per player and per mount, so knowing one rider's layout tells you nothing about
 another's. A reload mid-mission may flip it again; that's harmless.
 
+**Good riders keep both buttons.** Unless the "anyone may fail" variant is on, Good can
+only play Success. Good still sees a green and a red button. Both play Success, and the
+red one is labelled SUCCESS. If Good saw one button, the layout and thumb travel alone
+would mark the rider as Good. The red button's label does differ from an Evil rider's
+(FAIL). That is only visible by reading the screen itself, which is already out of
+scope (§9).
+
 **Vote screen (Approve / Reject) is deliberately fixed.** Votes are public under the
 rules (the TV shows every name with their vote), so nothing is hidden and a stable
 layout avoids mis-taps.
@@ -227,11 +235,12 @@ These aren't random, and that's correct. They're listed here so nobody "fixes" t
 
 - **Team sizes, evil count, two-Fail mission**: fixed tables in `lib/rules.ts`, from the
   official rules up to 10 players and the house extension above that.
-- **Deck contents**: fixed by player count and the specials the host turned off.
+- **Deck contents**: fixed by player count and the specials the host chose.
   Randomness only decides *who* gets each card.
-- **Assassin's blade**: goes to the configured evil role if it's in play, otherwise
-  follows `FLAG_PRIORITY`. It's tied to a role, not a seat, so it's exactly as random as
-  the deal.
+- **Assassin's blade**: `bladeRole` decides from the config alone. A configured add-on
+  holder in the deck takes it. Otherwise an Assassin card takes a free Evil seat, and
+  failing that the blade follows `FLAG_PRIORITY`. It's tied to a role, not a seat, so
+  it's exactly as random as the deal.
 - **Rotation direction**: always increasing seat index.
 
 ---
@@ -250,6 +259,7 @@ Ordering and timing can leak information even when the random draws are fair. Au
 | Quest reveal order | Card sequence | Shuffled (§5). Fine. |
 | Phone after casting a quest card | "Your card is cast" | Identical for Success and Fail. Fine. |
 | Phone mission button position | Thumb high or low | Randomized (§6). Fine. |
+| Good rider's mission buttons | Both play Success; red is labelled SUCCESS | Same layout and colours as Evil (§6). Only the label differs, which needs a look at the screen. Fine. |
 | Game-over cast list | Every role, in seat order | Game is over. Fine. |
 
 ---

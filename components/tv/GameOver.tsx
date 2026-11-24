@@ -139,8 +139,12 @@ export function GameOver({
             );
           return (
             <span key={m}>
-              M{m + 1} {rec.success ? "◯" : `◆ fail ×${rec.fails}`} ·{" "}
-              {rec.unopposed ? "unopposed" : `approved ${rec.approve}–${rec.reject}`}
+              {rec.forfeited
+                ? `M${m + 1} ◆ forfeited · 5 teams rejected`
+                : <>
+                    M{m + 1} {rec.success ? "◯" : `◆ fail ×${rec.fails}`} ·{" "}
+                    {rec.unopposed ? "unopposed" : `approved ${rec.approve}–${rec.reject}`}
+                  </>}
             </span>
           );
         })}

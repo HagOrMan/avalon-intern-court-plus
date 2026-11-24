@@ -34,22 +34,38 @@ export interface Player {
   ready: boolean;
 }
 
+/**
+ * What a 5th consecutive rejection does:
+ * forfeit = Evil wins that quest; official = Evil wins the game (rulebook);
+ * unopposed = the 5th leader's team rides without a vote.
+ */
+export type RejectionVariant = "forfeit" | "official" | "unopposed";
+
 export interface Config {
-  /** special roles the GM has rested; their seats become plain Servant / Minion */
-  disabled: RoleKey[];
-  /** which evil role carries the assassin flag; resolved against roles actually in play at deal time */
+  /** optional roles the host has put in the deck (see OPTIONAL_ROLES); Servants / Minions fill the rest */
+  specials: RoleKey[];
+  /**
+   * "assassin" = a dedicated Assassin card when an Evil seat is free for it; otherwise the
+   * named Evil special carries the blade as an add-on. Resolved by `bladeRole`.
+   */
   assassinFlag: RoleKey;
   /** false = no endgame Merlin guess: three quests alone decide the game */
   assassination: boolean;
-  rejectionVariant: "official" | "unopposed";
+  rejectionVariant: RejectionVariant;
+  /** "Wraith" variant: Oberon is hidden from Merlin as well as from Evil */
+  oberonHiddenFromMerlin: boolean;
+  /** house variant: Good riders may play Fail */
+  goodMayFail: boolean;
 }
 
 export interface MissionRecord {
   mission: number;
-  team: string[]; // player names
+  team: string[]; // player names; empty when forfeited
   approve: number;
   reject: number;
   unopposed: boolean;
+  /** lost to five rejected proposals, no team rode */
+  forfeited?: boolean;
   fails: number;
   success: boolean;
 }

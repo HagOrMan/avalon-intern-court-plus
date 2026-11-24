@@ -1,6 +1,7 @@
 import type {
   Config,
   GameState,
+  MissionRecord,
   Player,
   QuestCard,
   RoleKey,
@@ -9,16 +10,18 @@ import type {
 import {
   ASSASSIN_REVEAL_MS,
   AUTO_ADVANCE_GRACE_MS,
-  FLAG_PRIORITY,
+  BLADE_CHOICES,
   MAX_PLAYERS,
   MIN_PLAYERS,
   MISSION_SIZES,
+  OPTIONAL_ROLES,
   VOTE_REVEAL_MS,
+  bladeRole,
   buildRoleList,
-  defaultAssassinFlag,
-  defaultSpecials,
+  deckProblem,
   failsRequired,
   isEvil,
+  normalizeConfig,
   questRevealMs,
   secureRandom,
   shuffle,
@@ -36,12 +39,7 @@ export function createRoom(code: string, hostToken: string, now = Date.now()): G
     hostToken,
     phase: "lobby",
     players: [],
-    config: {
-      disabled: [],
-      assassinFlag: "assassin",
-      assassination: true,
-      rejectionVariant: "official",
-    },
+    config: normalizeConfig({}),
     roles: {},
     rolesInPlay: [],
     flagHolderId: null,
@@ -101,31 +99,40 @@ export function shuffleSeats(s: GameState, rng: () => number = secureRandom): Ga
 export function startSetup(s: GameState): GameState {
   assert(s.phase === "lobby", "Not in the lobby");
   assert(s.players.length >= MIN_PLAYERS, `Need at least ${MIN_PLAYERS} players`);
-  return {
-    ...s,
-    phase: "setup",
-    config: { ...s.config, assassinFlag: defaultAssassinFlag(s.players.length) },
-  };
+  return { ...s, phase: "setup" };
 }
 
 export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
   assert(s.phase === "setup", "Configuration is only open during Court Setup");
-  const n = s.players.length;
-  const legal = defaultSpecials(n);
-  const disabled = (cfg.disabled ?? s.config.disabled).filter((r) => legal.includes(r));
+  const cur = normalizeConfig(s.config);
+  const wanted = cfg.specials ?? cur.specials;
+  assert(Array.isArray(wanted), "Unknown roles");
+  const specials = OPTIONAL_ROLES.filter((r) => wanted.includes(r));
   // the Mistress's sight is built around Merlin; without him she would see Morgana alone
-  if (disabled.includes("merlin") && !disabled.includes("mistress")) disabled.push("mistress");
-  const flagWanted = cfg.assassinFlag ?? s.config.assassinFlag;
-  assert(isEvil(flagWanted), "The assassin flag belongs to Evil");
-  const rejectionVariant = cfg.rejectionVariant ?? s.config.rejectionVariant;
+  if (!specials.includes("merlin") && specials.includes("mistress"))
+    specials.splice(specials.indexOf("mistress"), 1);
+  // only additions are checked: if players left, the host must still be able to rest roles
+  if (specials.some((r) => !cur.specials.includes(r))) {
+    const problem = deckProblem(s.players.length, specials);
+    assert(!problem, problem ?? "");
+  }
+  const assassinFlag = cfg.assassinFlag ?? cur.assassinFlag;
+  assert(BLADE_CHOICES.includes(assassinFlag), "The blade belongs to Evil");
+  const rejectionVariant = cfg.rejectionVariant ?? cur.rejectionVariant;
   assert(
-    rejectionVariant === "official" || rejectionVariant === "unopposed",
+    ["forfeit", "official", "unopposed"].includes(rejectionVariant),
     "Unknown rejection variant"
   );
-  const assassination = cfg.assassination ?? s.config.assassination !== false;
   return {
     ...s,
-    config: { disabled, assassinFlag: flagWanted, assassination: !!assassination, rejectionVariant },
+    config: {
+      specials,
+      assassinFlag,
+      assassination: !!(cfg.assassination ?? cur.assassination),
+      rejectionVariant,
+      oberonHiddenFromMerlin: !!(cfg.oberonHiddenFromMerlin ?? cur.oberonHiddenFromMerlin),
+      goodMayFail: !!(cfg.goodMayFail ?? cur.goodMayFail),
+    },
   };
 }
 
@@ -134,26 +141,19 @@ export function beginCourt(s: GameState, rng: () => number = secureRandom): Game
   assert(s.phase === "setup", "Not in Court Setup");
   const n = s.players.length;
   assert(n >= MIN_PLAYERS, `Need at least ${MIN_PLAYERS} players`);
-  const roleList = buildRoleList(n, s.config.disabled);
-  const dealt = shuffle(roleList, rng);
+  const config = normalizeConfig(s.config);
+  const problem = deckProblem(n, config.specials);
+  assert(!problem, problem ?? "");
+  const dealt = shuffle(buildRoleList(n, config), rng);
   const roles: Record<string, RoleKey> = {};
   s.players.forEach((p, i) => (roles[p.id] = dealt[i]));
 
-  // resolve the assassin flag: configured holder if in play, else priority order.
-  // Merlin resting or the assassination toggle being off means no endgame guess at all.
-  let flagHolderId: string | null = null;
-  if (!s.config.disabled.includes("merlin") && s.config.assassination !== false) {
-    const inPlay = (r: RoleKey) => Object.values(roles).includes(r);
-    const flagRole = inPlay(s.config.assassinFlag)
-      ? s.config.assassinFlag
-      : FLAG_PRIORITY.find(inPlay);
-    if (flagRole) {
-      flagHolderId = s.players.find((p) => roles[p.id] === flagRole)!.id;
-    }
-  }
+  const blade = bladeRole(n, config);
+  const flagHolderId = blade ? s.players.find((p) => roles[p.id] === blade)!.id : null;
 
   return {
     ...s,
+    config,
     phase: "reveal",
     roles,
     rolesInPlay: [...dealt].sort(),
@@ -271,6 +271,18 @@ export function ackVoteReveal(s: GameState, now = Date.now(), force = false): Ga
       winReason: "Five proposals rejected — the court collapses into Mordred's hands.",
     };
   }
+  if (rejections >= 5 && s.config.rejectionVariant === "forfeit") {
+    return closeMission(base, {
+      mission: s.mission,
+      team: [],
+      approve,
+      reject,
+      unopposed: false,
+      forfeited: true,
+      fails: 0,
+      success: false,
+    });
+  }
   return {
     ...base,
     rejections,
@@ -291,7 +303,10 @@ export function playQuestCard(
   assert(s.proposal.includes(playerId), "You do not ride on this mission");
   assert(!(playerId in s.questCards), "Your card is cast");
   assert(card === "success" || card === "fail", "Unknown card");
-  // house rule: anyone may fail a quest, Good included
+  assert(
+    card === "success" || isEvil(s.roles[playerId]) || s.config.goodMayFail === true,
+    "The loyal cannot fail a quest"
+  );
   const questCards = { ...s.questCards, [playerId]: card };
   const next: GameState = { ...s, questCards };
   if (Object.keys(questCards).length === s.proposal.length) {
@@ -309,7 +324,7 @@ export function ackQuestReveal(s: GameState, now = Date.now(), force = false): G
   const elapsed = now - s.questMeta.revealAt;
   assert(force || elapsed >= questRevealMs(s.questMeta.cards.length) - 250, "The cards are still turning");
   const { fails, success } = s.questMeta;
-  const record = {
+  return closeMission(s, {
     mission: s.mission,
     team: s.proposal.map((id) => s.players.find((p) => p.id === id)!.name),
     approve: s.lastVote?.approve ?? 0,
@@ -317,7 +332,11 @@ export function ackQuestReveal(s: GameState, now = Date.now(), force = false): G
     unopposed: s.lastVote?.unopposed ?? false,
     fails,
     success,
-  };
+  });
+}
+
+/** Record a finished mission (ridden or forfeited), then end the game or move to the next. */
+function closeMission(s: GameState, record: MissionRecord): GameState {
   const history = [...s.history, record];
   const wins = history.filter((h) => h.success).length;
   const losses = history.filter((h) => !h.success).length;

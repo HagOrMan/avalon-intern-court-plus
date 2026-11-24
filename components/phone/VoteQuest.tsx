@@ -89,6 +89,9 @@ export function QuestScreen({
   const cast = v.myCard ?? castLocal;
   // so onlookers can't read the card from whether a thumb went high or low
   const [failOnTop] = useState(() => secureRandom() < 0.5);
+  // Good still gets two buttons, so a loyal rider's screen and thumb look like an Evil
+  // rider's; the red one plays Success too. See docs/fairness.md §6.
+  const loyal = v.role?.allegiance === "good" && !v.goodMayFail;
 
   const play = async (card: "success" | "fail") => {
     setCastLocal(card);
@@ -136,9 +139,9 @@ export function QuestScreen({
           <span style={{ fontSize: 34 }}>◯</span>
           <span>SUCCESS</span>
         </button>
-        <button className="vote-btn reject" onClick={() => play("fail")}>
+        <button className="vote-btn reject" onClick={() => play(loyal ? "success" : "fail")}>
           <span style={{ fontSize: 30 }}>◆</span>
-          <span>FAIL</span>
+          <span>{loyal ? "SUCCESS" : "FAIL"}</span>
         </button>
       </div>
     </div>

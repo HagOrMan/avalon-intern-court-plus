@@ -77,12 +77,15 @@ async function dealAndSwearIn() {
   return roleOf;
 }
 
-/** Propose a team, approve unanimously, play the given number of fail cards, ride out the beats. */
-async function runMission(roleOf, failers) {
+/**
+ * Propose a team, approve unanimously, play the given number of fail cards, ride out the beats.
+ * `refused` rides too, has a Fail refused by the server, then plays Success.
+ */
+async function runMission(roleOf, failers, refused = null) {
   let tv = await readView(code, hostToken);
   const n = tv.missionSizes[tv.mission];
   const leaderTok = players.find((p) => p.playerId === tv.leaderId).token;
-  const team = [...failers];
+  const team = refused ? [refused, ...failers] : [...failers];
   for (const p of players) {
     if (team.length >= n) break;
     if (!team.includes(p)) team.push(p);
@@ -93,7 +96,14 @@ async function runMission(roleOf, failers) {
   await act(hostToken, "ack");
   tv = await readView(code, hostToken);
   assert(tv.phase === "quest", "vote acked -> quest");
+  if (refused) {
+    let blocked = false;
+    try { await act(refused.token, "questCard", { card: "fail" }); } catch { blocked = true; }
+    assert(blocked, "loyal rider's fail card refused");
+    await act(refused.token, "questCard", { card: "success" });
+  }
   for (const p of team) {
+    if (p === refused) continue;
     await act(p.token, "questCard", { card: failers.includes(p) ? "fail" : "success" });
   }
   tv = await readView(code, hostToken);
@@ -106,8 +116,22 @@ async function runMission(roleOf, failers) {
   return tv;
 }
 
-/* ---- game 1: assassination on, good players may fail ---- */
+/* ---- game 1: default deck, assassination on, good players must succeed ---- */
 await act(hostToken, "startSetup");
+{
+  const tv = await readView(code, hostToken);
+  assert(
+    ["merlin", "mistress", "mordred", "morgana"].every((r) => tv.config.specials.includes(r)) &&
+      tv.config.specials.length === 4,
+    "default specials: merlin, mistress, mordred, morgana"
+  );
+  assert(tv.config.rejectionVariant === "forfeit", "default rejection rule forfeits the quest");
+  let full = false;
+  try {
+    await act(hostToken, "updateConfig", { config: { specials: [...tv.config.specials, "oberon"] } });
+  } catch { full = true; }
+  assert(full, "no third evil special at 5 players");
+}
 let roleOf = await dealAndSwearIn();
 let evils = players.filter((p) => EVIL.includes(roleOf[p.playerId]));
 let goods = players.filter((p) => !evils.includes(p));
@@ -132,8 +156,8 @@ assert(evils.length === 2, "2 evil at 5 players");
 
 let tv = await runMission(roleOf, []); // M1 ✓
 tv = await runMission(roleOf, []); // M2 ✓
-tv = await runMission(roleOf, [goods[0]]); // M3 ✗ — a LOYAL player throws the fail
-assert(tv.questResults[2] && !tv.questResults[2].success, "good player's fail card counted");
+tv = await runMission(roleOf, [evils[0]], goods[0]); // M3 ✗ — a loyal rider tries to fail and can't
+assert(tv.questResults[2] && tv.questResults[2].fails === 1, "only the evil fail card counted");
 tv = await runMission(roleOf, []); // M4 ✓ -> three wins
 assert(tv.phase === "assassination", "3 wins -> assassination");
 
@@ -174,6 +198,24 @@ assert(tv.config.assassination === false, "restart keeps config");
 assert(tv.players.every((p) => !p.ready), "restart clears sworn-in state");
 
 roleOf = await dealAndSwearIn();
+
+// five rejected proposals forfeit M1 to Evil and move on to M2
+for (let i = 0; i < 5; i++) {
+  tv = await readView(code, hostToken);
+  const leaderTok = players.find((p) => p.playerId === tv.leaderId).token;
+  const team = players.slice(0, tv.missionSizes[tv.mission]).map((p) => p.playerId);
+  await act(leaderTok, "propose", { team });
+  for (const p of players) await act(p.token, "vote", { vote: "reject" });
+  await sleep(6100);
+  await act(hostToken, "ack");
+}
+tv = await readView(code, hostToken);
+assert(
+  tv.phase === "proposal" && tv.mission === 1 && tv.rejections === 0 &&
+    tv.questResults[0] && !tv.questResults[0].success,
+  "5 rejections -> M1 forfeited, on to M2"
+);
+
 await runMission(roleOf, []);
 await runMission(roleOf, []);
 tv = await runMission(roleOf, []);

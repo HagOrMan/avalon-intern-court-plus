@@ -134,7 +134,9 @@ export function VoteReveal({ v, clockOffset }: { v: TvView; clockOffset: number 
               ? `${nameList} ride for Mission ${v.mission + 1}`
               : v.rejections + 1 >= 5 && v.rejectionVariant === "official"
                 ? "The fifth candle gutters out…"
-                : "The crown passes on"}
+                : v.rejections + 1 >= 5 && v.rejectionVariant === "forfeit"
+                  ? "The fifth candle gutters out. The quest is lost."
+                  : "The crown passes on"}
           </div>
         </>
       )}

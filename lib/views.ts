@@ -1,6 +1,15 @@
-import type { GameState, MissionRecord, Phase, QuestCard, RoleKey, Vote } from "./types";
+import type {
+  Config,
+  GameState,
+  MissionRecord,
+  Phase,
+  QuestCard,
+  RejectionVariant,
+  RoleKey,
+  Vote,
+} from "./types";
 import { ROLES } from "./roles";
-import { MISSION_SIZES, isEvil, twoFailMission } from "./rules";
+import { MISSION_SIZES, isEvil, normalizeConfig, twoFailMission } from "./rules";
 import { leader } from "./engine";
 
 const PRESENCE_MS = 15000;
@@ -29,7 +38,9 @@ interface CommonView {
   leaderName: string | null;
   mission: number;
   rejections: number;
-  rejectionVariant: "official" | "unopposed";
+  rejectionVariant: RejectionVariant;
+  /** public table rule; the phone's quest screen depends on it */
+  goodMayFail: boolean;
   rolesInPlay: RoleKey[];
   proposalIds: string[];
   proposalNames: string[];
@@ -41,12 +52,7 @@ interface CommonView {
 
 export interface TvView extends CommonView {
   kind: "tv";
-  config: {
-    disabled: RoleKey[];
-    assassinFlag: RoleKey;
-    assassination: boolean;
-    rejectionVariant: string;
-  };
+  config: Config;
   voteReveal: {
     votes: { name: string; vote: Vote }[];
     approve: number;
@@ -120,6 +126,7 @@ function common(s: GameState, seen: Record<string, number>, now: number): Common
     mission: s.mission,
     rejections: s.rejections,
     rejectionVariant: s.config.rejectionVariant,
+    goodMayFail: s.config.goodMayFail === true,
     rolesInPlay: s.rolesInPlay,
     proposalIds: s.proposal,
     proposalNames: s.proposal.map(idToName),
@@ -138,7 +145,7 @@ export function tvView(s: GameState, seen: Record<string, number>, now = Date.no
   return {
     kind: "tv",
     ...common(s, seen, now),
-    config: { ...s.config, assassination: s.config.assassination !== false },
+    config: normalizeConfig(s.config),
     voteReveal:
       s.phase === "voteReveal" && s.voteMeta
         ? {
@@ -192,10 +199,15 @@ function knowledgeFor(s: GameState, playerId: string): Knowledge | null {
   const inPlay = (r: RoleKey) => s.rolesInPlay.includes(r);
 
   if (role === "merlin") {
+    const wraith = s.config.oberonHiddenFromMerlin === true;
+    const hidden = (r: RoleKey) => r === "mordred" || (wraith && r === "oberon");
+    const hiders = (["mordred", "oberon"] as RoleKey[]).filter((r) => hidden(r) && inPlay(r));
     return {
       label: "KNOWN TO YOU — EVIL WALKS AS:",
-      names: namesOf((r) => isEvil(r) && r !== "mordred"),
-      note: inPlay("mordred") ? "(Mordred hides from you)" : null,
+      names: namesOf((r) => isEvil(r) && !hidden(r)),
+      note: hiders.length
+        ? `(${hiders.map((r) => ROLES[r].name).join(" and ")} ${hiders.length > 1 ? "hide" : "hides"} from you)`
+        : null,
     };
   }
   if (role === "mistress") {

@@ -1,4 +1,4 @@
-import type { RoleKey } from "./types";
+import type { Config, RoleKey } from "./types";
 
 export const MIN_PLAYERS = 5;
 export const MAX_PLAYERS = 16;
@@ -37,14 +37,6 @@ export function evilCount(playerCount: number): number {
   return 6;
 }
 
-/** Default special roles by player count. Servants/Minions fill the remainder. */
-export function defaultSpecials(playerCount: number): RoleKey[] {
-  const specials: RoleKey[] = ["merlin", "mistress", "mordred", "morgana"];
-  if (playerCount >= 7) specials.push("assassin");
-  if (playerCount >= 10) specials.push("oberon");
-  return specials;
-}
-
 export const GOOD_ROLES: RoleKey[] = ["merlin", "mistress", "servant"];
 export const EVIL_ROLES: RoleKey[] = ["mordred", "morgana", "assassin", "minion", "oberon"];
 
@@ -52,27 +44,72 @@ export function isEvil(role: RoleKey): boolean {
   return EVIL_ROLES.includes(role);
 }
 
-/** Build the full role list for a game given player count + disabled specials. */
-export function buildRoleList(playerCount: number, disabled: RoleKey[]): RoleKey[] {
+/**
+ * Roles the host picks into the deck, at any player count. The Assassin isn't here:
+ * `bladeRole` decides whether it gets a card. Servants and Minions are fillers.
+ */
+export const OPTIONAL_ROLES: RoleKey[] = ["merlin", "mistress", "mordred", "morgana", "oberon"];
+export const DEFAULT_SPECIALS: RoleKey[] = ["merlin", "mistress", "mordred", "morgana"];
+
+/** Evil roles that can carry the blade as an add-on when no Assassin card fits. */
+export const BLADE_CHOICES: RoleKey[] = ["assassin", "mordred", "morgana", "oberon"];
+/** Who carries the blade when the configured holder can't. */
+export const FLAG_PRIORITY: RoleKey[] = ["morgana", "mordred", "oberon"];
+
+type StoredConfig = Partial<Config> & { disabled?: RoleKey[] };
+
+/**
+ * Rooms live in Redis for up to ROOM_TTL_SECONDS and may have been saved by an older
+ * deploy with missing fields (or a `disabled` list instead of `specials`). Read config
+ * through this so a deploy doesn't break a court mid-session.
+ */
+export function normalizeConfig(c: StoredConfig): Config {
+  return {
+    specials: c.specials ?? DEFAULT_SPECIALS.filter((r) => !c.disabled?.includes(r)),
+    assassinFlag: c.assassinFlag ?? "assassin",
+    assassination: c.assassination !== false,
+    rejectionVariant: c.rejectionVariant ?? "forfeit",
+    oberonHiddenFromMerlin: c.oberonHiddenFromMerlin === true,
+    goodMayFail: c.goodMayFail === true,
+  };
+}
+
+/** Why `specials` can't be dealt at this player count, or null if it can. */
+export function deckProblem(playerCount: number, specials: RoleKey[]): string | null {
   const evil = evilCount(playerCount);
   const good = playerCount - evil;
-  const specials = defaultSpecials(playerCount).filter((r) => !disabled.includes(r));
-  const roles: RoleKey[] = [];
-  const goodSpecials = specials.filter((r) => !isEvil(r));
-  const evilSpecials = specials.filter((r) => isEvil(r));
-  roles.push(...goodSpecials);
+  const g = specials.filter((r) => !isEvil(r)).length;
+  const e = specials.filter(isEvil).length;
+  if (g > good) return `Only ${good} Good seats at ${playerCount} players. Rest a Good role.`;
+  if (e > evil) return `Only ${evil} Evil seats at ${playerCount} players. Rest an Evil role.`;
+  return null;
+}
+
+/**
+ * The role that carries the assassin's blade, or null for no assassination.
+ * A configured add-on holder wins if it's in the deck. Otherwise the Assassin gets its own
+ * card if an Evil seat is free, and failing that the blade rides on an Evil special.
+ */
+export function bladeRole(playerCount: number, c: Config): RoleKey | null {
+  if (!c.assassination || !c.specials.includes("merlin")) return null;
+  const evilSpecials = c.specials.filter(isEvil);
+  if (c.assassinFlag !== "assassin" && evilSpecials.includes(c.assassinFlag)) return c.assassinFlag;
+  if (evilSpecials.length < evilCount(playerCount)) return "assassin";
+  return FLAG_PRIORITY.find((r) => evilSpecials.includes(r)) ?? null;
+}
+
+/** Full deck for a game. Callers check `deckProblem` first. */
+export function buildRoleList(playerCount: number, c: Config): RoleKey[] {
+  const evil = evilCount(playerCount);
+  const good = playerCount - evil;
+  const goodSpecials = c.specials.filter((r) => !isEvil(r));
+  const evilSpecials = c.specials.filter(isEvil);
+  if (bladeRole(playerCount, c) === "assassin") evilSpecials.push("assassin");
+  const roles: RoleKey[] = [...goodSpecials];
   for (let i = goodSpecials.length; i < good; i++) roles.push("servant");
   roles.push(...evilSpecials);
   for (let i = evilSpecials.length; i < evil; i++) roles.push("minion");
   return roles;
-}
-
-/** Priority used to resolve the assassin flag if the configured holder isn't in play. */
-export const FLAG_PRIORITY: RoleKey[] = ["assassin", "morgana", "mordred", "oberon", "minion"];
-
-/** Default flag holder: real Assassin seat at 7+, Morgana at 5–6. */
-export function defaultAssassinFlag(playerCount: number): RoleKey {
-  return playerCount >= 7 ? "assassin" : "morgana";
 }
 
 /**
