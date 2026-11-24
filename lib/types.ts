@@ -81,6 +81,12 @@ export interface GameState {
   /** resolved at deal time: playerId holding the assassin flag (null = no assassination phase) */
   flagHolderId: string | null;
   leaderIndex: number;
+  /**
+   * Set by playAgain: who leads first next game, so the rotation continues across games.
+   * Honored only if the table still has `playerCount` seats and that player is seated;
+   * otherwise the first leader is random.
+   */
+  nextLeader?: { playerId: string; playerCount: number } | null;
   mission: number; // 0..4
   rejections: number;
   proposal: string[]; // playerIds

@@ -86,6 +86,8 @@ export function QuestScreen({
 }) {
   const [castLocal, setCastLocal] = useState<"success" | "fail" | null>(null);
   const cast = v.myCard ?? castLocal;
+  // so onlookers can't read the card from whether a thumb went high or low
+  const [failOnTop] = useState(() => Math.random() < 0.5);
 
   const play = async (card: "success" | "fail") => {
     setCastLocal(card);
@@ -121,7 +123,14 @@ export function QuestScreen({
       <div className="serif" style={{ font: "600 24px var(--font-serif)", textAlign: "center" }}>
         You ride for Mission {v.mission + 1}
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: failOnTop ? "column-reverse" : "column",
+          gap: 14,
+        }}
+      >
         <button className="vote-btn approve" onClick={() => play("success")}>
           <span style={{ fontSize: 34 }}>◯</span>
           <span>SUCCESS</span>

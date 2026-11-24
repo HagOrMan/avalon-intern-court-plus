@@ -146,7 +146,8 @@ export function beginCourt(s: GameState, rng: () => number = Math.random): GameS
     rolesInPlay: [...dealt].sort(),
     flagHolderId,
     players: s.players.map((p) => ({ ...p, ready: false })),
-    leaderIndex: Math.floor(rng() * n),
+    leaderIndex: firstLeaderIndex(s, rng),
+    nextLeader: null,
     mission: 0,
     rejections: 0,
     proposal: [],
@@ -161,6 +162,16 @@ export function beginCourt(s: GameState, rng: () => number = Math.random): GameS
     winner: null,
     winReason: null,
   };
+}
+
+function firstLeaderIndex(s: GameState, rng: () => number): number {
+  const n = s.players.length;
+  const carry = s.nextLeader;
+  if (carry && carry.playerCount === n) {
+    const i = s.players.findIndex((p) => p.id === carry.playerId);
+    if (i >= 0) return i;
+  }
+  return Math.floor(rng() * n);
 }
 
 export function playerReady(s: GameState, playerId: string): GameState {
@@ -373,9 +384,14 @@ export function ackAssassinationReveal(s: GameState, now = Date.now(), force = f
 /** Back to Court Setup with the same seats. Allowed from gameover or mid-game (host restart). */
 export function playAgain(s: GameState): GameState {
   assert(s.phase !== "lobby" && s.phase !== "setup", "The court has not convened yet");
+  // a leader restarted out of reveal/proposal never picked a team, so they keep the lead
+  const leaderPicked = s.phase !== "reveal" && s.phase !== "proposal";
+  const n = s.players.length;
+  const nextIndex = (s.leaderIndex + (leaderPicked ? 1 : 0)) % n;
   return {
     ...createRoom(s.code, s.hostToken, s.createdAt),
     players: s.players.map((p) => ({ ...p, ready: false })),
+    nextLeader: { playerId: s.players[nextIndex].id, playerCount: n },
     config: s.config,
     phase: "setup",
     updatedAt: Date.now(),
