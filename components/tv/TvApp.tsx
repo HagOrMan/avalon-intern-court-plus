@@ -178,6 +178,8 @@ export function TvApp({
         return <TvSetup v={v} act={act} />;
       case "reveal":
         return <RolesInPlay v={v} />;
+      case "lady":
+      case "ladyReveal":
       case "proposal":
       case "voting":
       case "quest":

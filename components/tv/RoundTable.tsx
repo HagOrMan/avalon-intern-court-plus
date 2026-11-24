@@ -149,6 +149,22 @@ export function RoundTable({ v }: { v: TvView }) {
   const ry = crowded ? 310 : 300;
 
   const banner = () => {
+    if (v.phase === "lady") {
+      return (
+        <>
+          <span style={{ color: "var(--gold)" }}>◈ {v.lady?.holderName}</span> raises the Lady of
+          the Lake…
+        </>
+      );
+    }
+    if (v.phase === "ladyReveal") {
+      return (
+        <>
+          {v.lady?.holderName} looks into{" "}
+          <span style={{ color: "var(--gold)" }}>{v.lady?.examinedName}</span>&apos;s heart
+        </>
+      );
+    }
     if (v.phase === "proposal") {
       return (
         <>
@@ -251,6 +267,11 @@ export function RoundTable({ v }: { v: TvView }) {
             >
               {p.name}
             </div>
+            {v.lady?.holderId === p.id && (
+              <div style={{ font: `600 ${crowded ? 14 : 16}px var(--font-body)`, letterSpacing: "0.1em", color: "var(--gold)" }}>
+                ◈ LADY
+              </div>
+            )}
             {!p.connected && (
               <div style={{ font: "500 16px var(--font-body)", color: "var(--evil-text)" }}>
                 adrift

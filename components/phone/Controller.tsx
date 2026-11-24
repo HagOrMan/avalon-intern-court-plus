@@ -8,6 +8,7 @@ import { KnowledgeBox, RoleReveal } from "./RoleReveal";
 import { ProposeScreen } from "./Propose";
 import { QuestScreen, VoteScreen } from "./VoteQuest";
 import { AssassinScreen } from "./Assassin";
+import { LadyChooseScreen, LadyResultScreen, LadyVerdict } from "./Lady";
 import { Plate } from "@/components/Plate";
 import { MAX_PLAYERS } from "@/lib/rules";
 
@@ -79,6 +80,7 @@ function RolePeek({ v }: { v: PlayerView }) {
               You carry the assassin&apos;s flag.
             </div>
           )}
+          {v.ladyResult && <LadyVerdict result={v.ladyResult} />}
           <div
             style={{
               font: "600 11px var(--font-body)",
@@ -229,6 +231,22 @@ export function Controller({
         );
       case "reveal":
         return <RoleReveal v={v} act={act} />;
+      case "lady":
+        if (v.ladyTargets) return <LadyChooseScreen v={v} act={act} />;
+        return (
+          <Waiting
+            title={`${v.lady?.holderName} holds the Lady of the Lake…`}
+            sub="They choose one courtier whose loyalty they will see."
+          />
+        );
+      case "ladyReveal":
+        if (v.lady?.holderId === v.me.id) return <LadyResultScreen v={v} act={act} />;
+        return (
+          <Waiting
+            title={`${v.lady?.holderName} examines ${v.lady?.examinedName}`}
+            sub="Only the Lady's bearer sees the card. What they claim is up to them."
+          />
+        );
       case "proposal":
         if (v.isLeader) return <ProposeScreen v={v} act={act} />;
         return (

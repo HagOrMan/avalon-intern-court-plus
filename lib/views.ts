@@ -1,4 +1,5 @@
 import type {
+  Allegiance,
   Config,
   GameState,
   MissionRecord,
@@ -10,7 +11,7 @@ import type {
 } from "./types";
 import { ROLES } from "./roles";
 import { MISSION_SIZES, failsNeeded, isEvil, normalizeConfig } from "./rules";
-import { leader } from "./engine";
+import { ladyTargets, leader } from "./engine";
 
 const PRESENCE_MS = 15000;
 
@@ -48,6 +49,14 @@ interface CommonView {
   votedIds: string[];
   /** per-mission results for the quest track (null = not yet played) */
   questResults: ({ success: boolean; fails: number } | null)[];
+  /** who holds and who has held the Lady is open information; results never appear here */
+  lady: {
+    holderId: string;
+    holderName: string;
+    pastHolderIds: string[];
+    /** during ladyReveal, the player being examined */
+    examinedName: string | null;
+  } | null;
   serverNow: number;
 }
 
@@ -99,6 +108,10 @@ export interface PlayerView extends CommonView {
   cardsNeeded: number;
   voteResult: { approved: boolean; approve: number; reject: number } | null;
   assassin: { choosing: boolean; targets: { id: string; name: string }[] } | null;
+  /** set only for the Lady's holder while choosing */
+  ladyTargets: { id: string; name: string }[] | null;
+  /** this player's own Lady check, if they made one; no one else's view carries it */
+  ladyResult: { targetName: string; loyalty: Allegiance } | null;
   gameover: { winner: string; winReason: string; myRole: RoleKey; cast: CastEntry[] } | null;
   paused: boolean;
 }
@@ -133,6 +146,17 @@ function common(s: GameState, seen: Record<string, number>, now: number): Common
     proposalNames: s.proposal.map(idToName),
     votedIds: s.phase === "voting" ? Object.keys(s.votes) : [],
     questResults,
+    lady: s.lady
+      ? {
+          holderId: s.lady.holderId,
+          holderName: idToName(s.lady.holderId),
+          pastHolderIds: s.lady.pastHolderIds,
+          examinedName:
+            s.phase === "ladyReveal" && s.lady.checks.length
+              ? idToName(s.lady.checks[s.lady.checks.length - 1].targetId)
+              : null,
+        }
+      : null,
     serverNow: now,
   };
 }
@@ -301,6 +325,20 @@ export function playerView(
               .map((p) => ({ id: p.id, name: p.name })),
           }
         : null,
+    ladyTargets:
+      s.phase === "lady" && s.lady?.holderId === playerId
+        ? [...ladyTargets(s)]
+            .sort((a, b) => a.seat - b.seat)
+            .map((p) => ({ id: p.id, name: p.name }))
+        : null,
+    ladyResult: (() => {
+      const mine = s.lady?.checks.find((c) => c.holderId === playerId);
+      if (!mine) return null;
+      return {
+        targetName: s.players.find((p) => p.id === mine.targetId)?.name ?? "?",
+        loyalty: mine.loyalty,
+      };
+    })(),
     gameover:
       s.phase === "gameover"
         ? { winner: s.winner!, winReason: s.winReason ?? "", myRole: role, cast: castList(s) }

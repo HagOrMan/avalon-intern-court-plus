@@ -6,6 +6,8 @@ import {
   ackVoteReveal,
   assassinate,
   beginCourt,
+  ladyExamine,
+  ladyPass,
   playAgain,
   playerReady,
   playQuestCard,
@@ -75,6 +77,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
           return playQuestCard(s, player.id, body.card);
         case "assassinate":
           return assassinate(s, player.id, body.targetId);
+        case "ladyExamine":
+          return ladyExamine(s, player.id, body.targetId);
+        case "ladyPass":
+          return ladyPass(s, player.id);
         default:
           throw new GameError("Unknown action");
       }

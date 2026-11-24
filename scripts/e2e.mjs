@@ -116,6 +116,30 @@ async function runMission(roleOf, failers, refused = null) {
   return tv;
 }
 
+/** The Lady's holder examines the first eligible player and passes the token. */
+async function runLady(roleOf) {
+  let tv = await readView(code, hostToken);
+  assert(tv.phase === "lady", "quest resolved -> the Lady's turn");
+  const holder = players.find((p) => p.playerId === tv.lady.holderId);
+  const hv = await readView(code, holder.token);
+  const target = hv.ladyTargets[0];
+  assert(
+    hv.ladyTargets.every((t) => !tv.lady.pastHolderIds.includes(t.id)),
+    "the Lady can't examine a past holder"
+  );
+  await act(holder.token, "ladyExamine", { targetId: target.id });
+  const after = await readView(code, holder.token);
+  const expected = EVIL.includes(roleOf[target.id]) ? "evil" : "good";
+  assert(after.ladyResult.loyalty === expected, "the Lady shows the true loyalty");
+  for (const p of players.filter((p) => p !== holder)) {
+    const pv = await readView(code, p.token);
+    if (pv.ladyResult?.targetName === target.name) throw new Error("ASSERT: result leaked to " + p.name);
+  }
+  await act(holder.token, "ladyPass");
+  tv = await readView(code, hostToken);
+  assert(tv.phase === "proposal" && tv.lady.holderId === target.id, "the Lady passes to the examined player");
+}
+
 /* ---- game 1: default deck, assassination on, good players must succeed ---- */
 await act(hostToken, "startSetup");
 {
@@ -126,11 +150,11 @@ await act(hostToken, "startSetup");
     "default specials: merlin, mistress, mordred, morgana"
   );
   assert(tv.config.rejectionVariant === "forfeit", "default rejection rule forfeits the quest");
+  await act(hostToken, "updateConfig", { config: { specials: [...tv.config.specials, "oberon"] } });
   let full = false;
-  try {
-    await act(hostToken, "updateConfig", { config: { specials: [...tv.config.specials, "oberon"] } });
-  } catch { full = true; }
-  assert(full, "no third evil special at 5 players");
+  try { await act(hostToken, "beginCourt"); } catch { full = true; }
+  assert(full, "a third evil special can be chosen, but 5 players can't begin with it");
+  await act(hostToken, "updateConfig", { config: { specials: tv.config.specials } });
 }
 let roleOf = await dealAndSwearIn();
 let evils = players.filter((p) => EVIL.includes(roleOf[p.playerId]));
@@ -185,9 +209,10 @@ assert(tv.phase === "assassination", "3 wins -> assassination");
 await act(hostToken, "playAgain");
 tv = await readView(code, hostToken);
 assert(tv.phase === "setup" && tv.playerCount === 5, "play again -> setup, players kept");
-await act(hostToken, "updateConfig", { config: { assassination: false } });
+await act(hostToken, "updateConfig", { config: { assassination: false, ladyOfTheLake: true } });
 tv = await readView(code, hostToken);
 assert(tv.config.assassination === false, "assassination toggled off");
+assert(tv.config.ladyOfTheLake === true, "Lady of the Lake toggled on");
 
 /* host restart mid-game -> back to setup, same seats, config kept */
 roleOf = await dealAndSwearIn();
@@ -198,6 +223,15 @@ assert(tv.config.assassination === false, "restart keeps config");
 assert(tv.players.every((p) => !p.ready), "restart clears sworn-in state");
 
 roleOf = await dealAndSwearIn();
+{
+  const tv = await readView(code, hostToken);
+  const seats = [...tv.players].sort((a, b) => a.seat - b.seat);
+  const li = seats.findIndex((p) => p.id === tv.leaderId);
+  assert(
+    tv.lady.holderId === seats[(li - 1 + seats.length) % seats.length].id,
+    "the Lady starts on the first leader's right"
+  );
+}
 
 // five rejected proposals forfeit M1 to Evil and move on to M2
 for (let i = 0; i < 5; i++) {
@@ -216,9 +250,11 @@ assert(
   "5 rejections -> M1 forfeited, on to M2"
 );
 
-await runMission(roleOf, []);
-await runMission(roleOf, []);
-tv = await runMission(roleOf, []);
+await runMission(roleOf, []); // M2 ✓
+await runLady(roleOf);
+await runMission(roleOf, []); // M3 ✓
+await runLady(roleOf);
+tv = await runMission(roleOf, []); // M4 ✓ — game over, so no third check
 assert(
   tv.phase === "gameover" && tv.gameover.winner === "good",
   "3 wins with blade sheathed -> good wins outright, no assassination"

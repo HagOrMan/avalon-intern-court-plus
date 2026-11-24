@@ -68,6 +68,7 @@ export function normalizeConfig(c: StoredConfig): Config {
     rejectionVariant: c.rejectionVariant ?? "forfeit",
     oberonHiddenFromMerlin: c.oberonHiddenFromMerlin === true,
     goodMayFail: c.goodMayFail === true,
+    ladyOfTheLake: c.ladyOfTheLake === true,
   };
 }
 
@@ -77,8 +78,22 @@ export function deckProblem(playerCount: number, specials: RoleKey[]): string | 
   const good = playerCount - evil;
   const g = specials.filter((r) => !isEvil(r)).length;
   const e = specials.filter(isEvil).length;
-  if (g > good) return `Only ${good} Good seats at ${playerCount} players. Rest a Good role.`;
-  if (e > evil) return `Only ${evil} Evil seats at ${playerCount} players. Rest an Evil role.`;
+  if (g > good || e > evil) {
+    const min = minPlayersFor(specials);
+    return min
+      ? `This court needs at least ${min} players for its ${e} Evil and ${g} Good roles. Seat more players or rest a role.`
+      : `No court of up to ${MAX_PLAYERS} can seat ${e} Evil and ${g} Good roles. Rest a role.`;
+  }
+  return null;
+}
+
+/** Smallest table that seats every chosen special, or null if none up to MAX_PLAYERS does. */
+export function minPlayersFor(specials: RoleKey[]): number | null {
+  const g = specials.filter((r) => !isEvil(r)).length;
+  const e = specials.filter(isEvil).length;
+  for (let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++) {
+    if (evilCount(n) >= e && n - evilCount(n) >= g) return n;
+  }
   return null;
 }
 

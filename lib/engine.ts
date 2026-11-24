@@ -55,6 +55,7 @@ export function createRoom(code: string, hostToken: string, now = Date.now()): G
     history: [],
     assassinTargetId: null,
     assassinRevealAt: null,
+    lady: null,
     winner: null,
     winReason: null,
     createdAt: now,
@@ -111,11 +112,8 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
   // the Mistress's sight is built around Merlin; without him she would see Morgana alone
   if (!specials.includes("merlin") && specials.includes("mistress"))
     specials.splice(specials.indexOf("mistress"), 1);
-  // only additions are checked: if players left, the host must still be able to rest roles
-  if (specials.some((r) => !cur.specials.includes(r))) {
-    const problem = deckProblem(s.players.length, specials);
-    assert(!problem, problem ?? "");
-  }
+  // seat counts aren't checked here: players can still join during setup, so an overfull
+  // deck is allowed and refused at beginCourt
   const assassinFlag = cfg.assassinFlag ?? cur.assassinFlag;
   assert(BLADE_CHOICES.includes(assassinFlag), "The blade belongs to Evil");
   const rejectionVariant = cfg.rejectionVariant ?? cur.rejectionVariant;
@@ -132,6 +130,7 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
       rejectionVariant,
       oberonHiddenFromMerlin: !!(cfg.oberonHiddenFromMerlin ?? cur.oberonHiddenFromMerlin),
       goodMayFail: !!(cfg.goodMayFail ?? cur.goodMayFail),
+      ladyOfTheLake: !!(cfg.ladyOfTheLake ?? cur.ladyOfTheLake),
     },
   };
 }
@@ -150,6 +149,9 @@ export function beginCourt(s: GameState, rng: () => number = secureRandom): Game
 
   const blade = bladeRole(n, config);
   const flagHolderId = blade ? s.players.find((p) => roles[p.id] === blade)!.id : null;
+  const leaderIndex = firstLeaderIndex(s, rng);
+  // the Lady starts on the first leader's right; leadership passes to higher seats, so that's one seat back
+  const ladyStart = s.players[(leaderIndex - 1 + n) % n].id;
 
   return {
     ...s,
@@ -158,8 +160,11 @@ export function beginCourt(s: GameState, rng: () => number = secureRandom): Game
     roles,
     rolesInPlay: [...dealt].sort(),
     flagHolderId,
+    lady: config.ladyOfTheLake
+      ? { holderId: ladyStart, pastHolderIds: [ladyStart], checks: [] }
+      : null,
     players: s.players.map((p) => ({ ...p, ready: false })),
-    leaderIndex: firstLeaderIndex(s, rng),
+    leaderIndex,
     nextLeader: null,
     mission: 0,
     rejections: 0,
@@ -367,12 +372,53 @@ function closeMission(s: GameState, record: MissionRecord): GameState {
       winReason: "Three quests won. With no blade raised against Merlin, the light holds.",
     };
   }
+  // the Lady examines after quests 2, 3 and 4 are resolved, forfeits included
+  const ladyTurn = !!s.lady && record.mission >= 1 && record.mission <= 3;
   return {
     ...base,
     mission: s.mission + 1,
     rejections: 0,
     leaderIndex: (s.leaderIndex + 1) % s.players.length,
+    phase: ladyTurn ? "lady" : "proposal",
+  };
+}
+
+/** Players the current Lady may examine: anyone who has never held the token. */
+export function ladyTargets(s: GameState): Player[] {
+  const lady = s.lady;
+  if (!lady) return [];
+  return s.players.filter((p) => !lady.pastHolderIds.includes(p.id));
+}
+
+export function ladyExamine(s: GameState, playerId: string, targetId: string): GameState {
+  assert(s.phase === "lady" && s.lady, "The Lady is not abroad");
+  assert(s.lady.holderId === playerId, "The Lady is not yours");
+  assert(targetId !== playerId, "The Lady cannot look upon her own bearer");
+  assert(
+    ladyTargets(s).some((p) => p.id === targetId),
+    "That courtier has borne the Lady and cannot be examined"
+  );
+  const loyalty = isEvil(s.roles[targetId]) ? "evil" : "good";
+  return {
+    ...s,
+    phase: "ladyReveal",
+    lady: { ...s.lady, checks: [...s.lady.checks, { holderId: playerId, targetId, loyalty }] },
+  };
+}
+
+/** The holder has seen the result; the examined player takes the token. */
+export function ladyPass(s: GameState, playerId: string): GameState {
+  assert(s.phase === "ladyReveal" && s.lady, "The Lady is not abroad");
+  assert(s.lady.holderId === playerId, "The Lady is not yours");
+  const check = s.lady.checks[s.lady.checks.length - 1];
+  return {
+    ...s,
     phase: "proposal",
+    lady: {
+      ...s.lady,
+      holderId: check.targetId,
+      pastHolderIds: [...s.lady.pastHolderIds, check.targetId],
+    },
   };
 }
 
@@ -416,8 +462,8 @@ export function ackAssassinationReveal(s: GameState, now = Date.now(), force = f
 /** Back to Court Setup with the same seats. Allowed from gameover or mid-game (host restart). */
 export function playAgain(s: GameState): GameState {
   assert(s.phase !== "lobby" && s.phase !== "setup", "The court has not convened yet");
-  // a leader restarted out of reveal/proposal never picked a team, so they keep the lead
-  const leaderPicked = s.phase !== "reveal" && s.phase !== "proposal";
+  // a leader restarted before proposing (reveal, the Lady's turn, proposal) never picked a team, so they keep the lead
+  const leaderPicked = !["reveal", "lady", "ladyReveal", "proposal"].includes(s.phase);
   const n = s.players.length;
   const nextIndex = (s.leaderIndex + (leaderPicked ? 1 : 0)) % n;
   return {

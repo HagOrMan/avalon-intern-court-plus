@@ -242,6 +242,8 @@ These aren't random, and that's correct. They're listed here so nobody "fixes" t
   failing that the blade follows `FLAG_PRIORITY`. It's tied to a role, not a seat, so
   it's exactly as random as the deal.
 - **Rotation direction**: always increasing seat index.
+- **Lady of the Lake start**: the seat before the first leader (their "right", given the
+  rotation direction). It's as random as the first leader, no more.
 
 ---
 
@@ -259,6 +261,8 @@ Ordering and timing can leak information even when the random draws are fair. Au
 | Quest reveal order | Card sequence | Shuffled (§5). Fine. |
 | Phone after casting a quest card | "Your card is cast" | Identical for Success and Fail. Fine. |
 | Phone mission button position | Thumb high or low | Randomized (§6). Fine. |
+| Lady of the Lake holder, past holders, whom they examine | Names on TV and phones | Open information under the rules. Fine. |
+| Lady result | Good/Evil, only in the holder's own `playerView` | Hidden until held, shown in neutral colours, never on the TV. Fine. |
 | Good rider's mission buttons | Both play Success; red is labelled SUCCESS | Same layout and colours as Evil (§6). Only the label differs, which needs a look at the screen. Fine. |
 | Game-over cast list | Every role, in seat order | Game is over. Fine. |
 

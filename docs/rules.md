@@ -107,8 +107,16 @@ player. If that player is Merlin, Evil wins. Otherwise Good wins.
 
 ## 2. Variants and modules
 
-None of these is implemented except the Wraith (a setting) and the two rule variants in
-§3. Section 5 lists what each module needs.
+Built so far: the Wraith and Lady of the Lake (both settings, §3). Section 5 lists what
+the rest need, with the decisions already made.
+
+**Order at the end of a mission**, when several modules apply:
+
+1. The Lancelot allegiance draw (before rounds 3, 4 and 5).
+2. The Lady of the Lake check (after quests 2, 3 and 4).
+
+The draw resolves first, so a Lady check on the same round sees a Lancelot's new
+loyalty.
 
 ### 2.1 Wraith (Oberon variant, from the online platform)
 
@@ -116,50 +124,122 @@ Wraith is Oberon who is also hidden from **Merlin**, so no one knows him. It isn
 standard Oberon ability. **In the app:** this is the "Oberon: hidden from Merlin too"
 setting (§3).
 
-### 2.2 Lady of the Lake (board game module)
+### 2.2 Lady of the Lake (official optional rule)
 
-The Lady is a token, not a character. The holder privately checks one player's
-*loyalty* (Good/Evil), not their character.
+The Lady is a token, not a character, and who holds it is open information. The holder
+privately sees one player's *loyalty* (Good/Evil), never their character.
 
-- The first holder is the player to the **right of the first leader**.
-- Checks happen **before team selection for missions 3, 4 and 5**, if the game gets
-  there. Rejected teams don't create extra checks.
-- The holder picks another player who **has never held the Lady**. The starting holder
-  counts as a past holder. Nobody can check themselves.
-- Only the holder learns the result. They then announce a result to the table, and
-  **may lie**.
-- The checked player takes the token and becomes the next holder.
-- Mordred shows as Evil. Lady sees loyalty, not visibility to Merlin.
-- The review recommends it for 7+ players.
+Official rules:
 
-### 2.3 Excalibur (Kickstarter promo; rules as the online platform plays it)
+- At the start of the game, the token goes to the player on the **first leader's right**.
+- **Immediately after the 2nd, 3rd and 4th quests are resolved**, the holder chooses one
+  player to examine. So at most three uses per game. Rejected teams don't create extra
+  checks.
+- The examined player gets the two Loyalty cards and passes the holder the one matching
+  their character's loyalty. Passing the wrong card loses the game.
+- The holder may discuss the result but **can't show the card**. They may lie about it.
+- The examined player takes the token.
+- **A player who has used the Lady can't be examined.** In practice that covers every
+  past holder, the starting holder included, and nobody can examine themselves.
+- Mordred shows as Evil. The Lady sees loyalty, not visibility to Merlin.
+- The rulebook advises keeping it for 7+ players, because it makes Good stronger and
+  win more often.
 
-Excalibur flips one submitted quest card, Success ↔ Fail. It never changes a role or a
-team vote.
+Rulebook example: Don (Evil) starts with the Lady. After quest 2 he examines Margaret
+(Good), is passed the Good card, and announces she's Evil. Margaret takes the token,
+examines someone after quest 3, and can't examine Don.
 
-- After picking the team and **before the vote**, the leader gives the sword to a team
-  member other than themselves. Everyone can see who holds it.
-- After the quest cards are in, the holder may flip **another team member's** card, or
-  skip. The holder can't target themselves or anyone off the team.
+**In the app** (built):
+
+- A setting, off by default, available at every player count.
+- The app replaces the Loyalty cards: the server reads the target's loyalty, so nobody
+  can pass the wrong card.
+- The announcement stays **verbal**; there's no in-app claim.
+- The result shows on the holder's phone only, hidden until held, in neutral colours
+  (not Good/Evil colours), and can be recalled later from the ROLE chip.
+- A quest lost to five rejections counts as resolved, so a check still follows it.
+
+### 2.3 Excalibur (promo)
+
+Excalibur makes one played quest card switch, Success ↔ Fail. It never changes a role
+or a team vote.
+
+Official rules:
+
+- During team building, the leader gives Excalibur to one team member along with their
+  team token. **The leader can't give it to themselves.**
+- Riders play their quest cards face down in front of themselves, so it's clear who
+  played what.
+- Before the cards are collected, the holder may tell **one other rider** to switch their
+  card: the unplayed card becomes the played one.
+- The holder then **looks at the card that was originally played**. So they know what
+  that player chose, and whether the switch helped or hurt.
+- The leader collects and shuffles the cards and reveals them as normal.
+- With Plot cards: Excalibur resolves before "Keeping a close eye on you", and can't
+  switch a card played face up by "In the Spotlight".
+
+Rulebook example: Ron leads and gives Sarah Excalibur on a team of Ron, Pat and Sarah.
+Sarah switches Pat's card, looks at the original (Success), and knows she has doomed
+the quest. The reveal shows two Successes and one Fail.
+
+The online platform adds:
+
+- The holder may skip.
 - A new holder is chosen for each proposed team.
-- The quest result uses the cards after the flip, with the usual Fail threshold.
-- Who used the sword, and on whom, is public. Only the holder and the target know the
-  affected card's value.
-- With Trapper, the leader's trap happens after the sword, and the leader sees the
-  post-flip value.
+- Who used the sword and on whom is public.
+- With Trapper, the trap resolves after the sword, and the leader sees the post-flip
+  value.
 
-### 2.4 Lancelot (Kickstarter promo; the online platform's version)
+**Decided:** under the "unopposed" rejection rule, the 5th leader still hands out the
+sword, even though there's no vote.
 
-There are two Lancelots, one starting Good and one starting Evil. Each wins with their
-**current** side.
+### 2.4 Lancelot (promo)
 
-- **Switch deck.** Five cards: 2 Switch, 3 blank. One card is drawn before missions 3,
-  4 and 5, if play gets there. A Switch swaps both Lancelots' sides; a blank does nothing.
-- **Forced cards.** On this platform, the currently Evil Lancelot **must** play Fail and
-  the currently Good one **must** play Success. The board-game variants differ.
-- **Knowledge.** Neither Lancelot learns the other's identity or the Evil team at setup.
-  Merlin sees the *starting* Evil Lancelot as Evil, and that doesn't update after a
+There are two Lancelot cards, Good and Evil, replacing one Good and one Evil character.
+Each Lancelot wins with their **current** side. A switch applies to everything: victory
+conditions and quest-card rules. The players never swap or show their character cards.
+
+**Official Variant 1: hidden switches**
+- Allegiance deck: 5 cards, 3 "No Change" and 2 "Switch Allegiance", shuffled face down.
+- Night: the Evil Lancelot doesn't open his eyes. He holds out his thumb, so **Evil
+  knows him, but he doesn't know Evil**.
+- At the beginning of round 3 and of every later round, flip one card. On a Switch, the
+  two Lancelots secretly swap sides. Lancelot can switch zero, one or two times.
+- Quest cards follow the player's current side under normal rules. The currently Evil
+  Lancelot *may* play Success.
+
+**Official Variant 2: switches known in advance**
+- Allegiance deck: 7 cards, 5 "No Change" and 2 "Switch Allegiance".
+- Night: the same as Variant 1 (Evil knows the Evil Lancelot).
+- At the start of the game, deal **five** cards face up, in order, above the tableau.
+  Card *k* says whether the Lancelots switch at the start of round *k*.
+- **The currently Evil Lancelot must play Fail. The currently Good one must play
+  Success.**
+
+**Official Variant 3: Lancelots know each other**
+- Night: an extra step lets the two Lancelots see each other. Recommended for larger
+  groups only.
+- The rulebook only adds this night step. It doesn't say whether the allegiance deck is
+  used.
+
+**Online platform version**
+- 5-card deck (2 Switch, 3 blank), drawn before missions 3, 4 and 5, as in Variant 1.
+- Cards are forced by current side, as in Variant 2.
+- **Neither Lancelot learns the other's identity or the Evil team**, and Evil isn't told
+  about the Evil Lancelot.
+- Merlin sees the *starting* Evil Lancelot as Evil, and that doesn't update after a
   switch.
+
+One source says the draw happens "starting after Mission 3". The official text and the
+platform both put the first draw at the start of round 3, which is after mission 2. The
+app follows the official text.
+
+**Decided:**
+- Every variant above is available as a setting.
+- Lady checks see current loyalty.
+- **A Lancelot never carries the blade.** There's always another Evil role to hold it.
+- Lancelots sit within the normal seat limits. Each role row says how many players the
+  deck needs, and the game refuses to begin if too few have joined.
 
 ### 2.5 Guinevere (online platform; needs Lancelot)
 
@@ -175,14 +255,36 @@ just as for Merlin.
   and removes it.
 - The remaining cards are shuffled and revealed as usual.
 
-### 2.7 Targeting (rulebook variant)
+**Decided:**
+- The leader may trap their own card.
+- The TV shows **who** was trapped but not the card. The trapped player stays highlighted
+  until the leader taps continue and the remaining cards are revealed.
+- The leader delivers the verdict verbally, or not at all.
 
-Quests may be attempted in any order. You weren't keen on it, so it's parked. The exact
-constraints would need the rulebook text before it's built.
+### 2.7 Targeting (official optional rule)
 
-### 2.8 Out of scope
+- In the team phase, the leader picks both the team and **which quest** it attempts. The
+  team size is that quest's size. The round marker shows the chosen quest.
+- The result goes on the attempted quest's space. **A quest can't be attempted twice.**
+- **The 5th quest can't be attempted until at least two other quests have succeeded.**
+- At 7+ players the 4th quest still needs two Fails.
 
-The *Resistance* Plot cards.
+Parked: you weren't keen on it.
+
+### 2.8 Plot cards (*The Plot Thickens*, from *The Resistance*): out of scope
+
+These are recorded so they aren't mistaken for Avalon rules:
+
+- 15 public Plot cards (7 used at 5–6 players). Each round the leader draws 1 (5–6
+  players), 2 (7–8) or 3 (9–10) and hands them to other players.
+- Star cards are used at once, Sword cards are held until used, and the Shield card
+  stays in play.
+- Ties in timing go clockwise from the leader.
+- Cards: Overheard Conversation, Opinion Maker, Establish Confidence, Open Up, No
+  Confidence, Keeping a Close Eye on You, Strong Leader, In the Spotlight, Take
+  Responsibility.
+- They use the two Loyalty cards. In Avalon, Merlin's identity stays secret even when
+  his loyalty is revealed.
 
 ---
 
@@ -202,6 +304,7 @@ The *Resistance* Plot cards.
 | Percival sees Merlin + Morgana unordered | `knowledgeFor` (alphabetical) | Yes |
 | Roles in play are public | `rolesInPlay` | Yes |
 | Evil talks before the assassination | Out loud at the table; no in-app channel | Yes (physical) |
+| Lady of the Lake | `ladyExamine`, `ladyPass`, `closeMission`; `components/phone/Lady.tsx` | Yes, when on (§2.2) |
 
 ### Role names
 
@@ -219,14 +322,18 @@ The *Resistance* Plot cards.
 ### Deck building (`OPTIONAL_ROLES`, `deckProblem`, `buildRoleList`)
 
 - **Free choice.** The host picks any of Merlin, Mistress, Mordred, Morgana and Oberon
-  at any player count, while that side has a free seat. Servants and Minions fill the
-  rest.
+  at any player count. Servants and Minions fill the rest.
 - **Defaults** (`DEFAULT_SPECIALS`): Merlin, Mistress, Mordred, Morgana.
 - **Mistress needs Merlin.** Resting Merlin also rests the Mistress and removes the
   assassination.
-- **Seat checks.** The server checks seats when a role is added and again at deal time,
-  so a table that lost players can't deal an overfull deck. Removing roles is always
-  allowed.
+- **Seat checks.**
+  - Players can still join during setup, so a deck larger than the current table is
+    allowed.
+  - Each role row shows "needs N+ players" whenever the deck with that role needs more
+    players than are seated (`minPlayersFor`).
+  - The advisory line turns red with the same message.
+  - Begin is refused with an error toast until enough players have joined
+    (`deckProblem`).
 
 ### The Assassin and the blade (`bladeRole`, `config.assassinFlag`)
 
@@ -251,6 +358,7 @@ target anyone, Evil included, because he doesn't know who they are.
 | Assassin's blade | Assassin card (when a seat is free) or any Evil special in the deck | Assassin |
 | Oberon (shown when he's in the deck) | Merlin sees him / hidden from Merlin too (Wraith) | Merlin sees him |
 | Quest cards | Good must succeed / anyone may fail | Good must succeed |
+| Lady of the Lake | On / off, at any player count | Off |
 
 When Good must succeed, Good riders still get a green and a red button, and **both play
 Success**. Phones look the same to anyone watching (`docs/fairness.md` §6). The server
@@ -272,7 +380,8 @@ also refuses a Fail from Good.
 | D8 | **Assassination can be turned off** | Always on when Merlin and the Assassin are in play | A setting | `config.assassination` |
 | D9 | **Assassin can't target known Evil** | Nothing stops it; it would just be a wasted guess | The engine refuses known-Evil targets. Oberon is targetable unless he holds the blade himself, in which case he can target anyone | `assassinate`; `playerView.assassin` |
 | D10 | **First leader carries over between games** | Random every game | Rotation continues from the previous game if the table is unchanged | `nextLeader`, `docs/fairness.md` §3 |
-| D11 | **Modules missing** | Lady of the Lake, Excalibur, Lancelot, Targeting | Not implemented. Lady and Excalibur show as v2 in Setup | §5 |
+| D11 | **Modules missing** | Excalibur, Lancelot, Targeting (Trapper is from *Hostile Intent*) | Not implemented yet. Excalibur shows as v2 in Setup. Targeting is parked | §5 |
+| D12 | **Lady after a forfeited quest** | A quest is lost to rejections only under the "quest fails" house rule | A forfeited quest counts as resolved, so the Lady check still follows it | `closeMission` |
 
 ---
 
@@ -284,53 +393,81 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 §8. If a module adds a timed TV beat, its duration goes in `lib/rules.ts` alongside an
 `autoAdvance` case.
 
-**Lady of the Lake**
-- State: `lady: { holderId, pastHolderIds[] } | null`, plus a private `ladyResult` for the
-  current holder.
-- Deal: holder = the seat to the right of the first leader. Leadership passes in
-  increasing seat index, so "right" is the previous seat: `(leaderIndex − 1 + n) % n`.
-- Flow: a new `lady` phase. `closeMission` enters it instead of `proposal` when the next
-  mission is 3, 4 or 5 (index 2–4) and the game continues, forfeits included. The holder's
-  phone picks a target (not self, not a past holder). Only the holder's `playerView` gets
-  Good/Evil. The TV shows "A examined B". The token passes, and play goes on to the
-  proposal.
-- Open: should there be an in-app "announce" step, or is it verbal only? Verbal matches
-  the board game.
+**Lady of the Lake: built.**
+- `GameState.lady` holds the holder, past holders, and the checks. Each check's loyalty
+  is server-only.
+- `closeMission` enters the `lady` phase after quests 2–4. `ladyExamine` moves to
+  `ladyReveal`, and `ladyPass` hands over the token and continues to `proposal`.
+- Views: who holds the Lady, who has held it, and whom they're examining are public.
+  Each player's own result appears only in their `playerView.ladyResult`.
+- There's no auto-advance: a holder who disconnects stalls the game, the same as the
+  assassination. Timers (below) will cover this.
 
-**Excalibur**
-- State: `excaliburHolderId` per proposal; `excaliburUse: { targetId, before, after } | null`.
-- `propose` takes a sword holder (team member ≠ leader). It's shown on the TV and the
-  vote screens.
-- A new `excalibur` phase after the last card, before `questReveal`: the holder flips or
-  skips. The flip is applied before the shuffle. Holder and target see the value
-  privately; the TV shows who flipped whom.
-- With Good-must-succeed, a sword can still turn Good's Success into a Fail. That's
-  intended.
+**Excalibur** (next)
+- State: `excaliburHolderId` per proposal, and
+  `excaliburUse: { targetId, original } | null`.
+- `propose` also takes a sword holder (a team member, not the leader), including the
+  unopposed 5th proposal. The holder is shown on the TV and the vote screens.
+- A new `excalibur` phase after the last card, before `questReveal`: the holder switches
+  one other rider's card or skips. The switch is applied before the shuffle.
+- The holder privately sees the original card. The TV shows who switched whom.
+- With Good-must-succeed, a switch can still turn Good's Success into a Fail. That's
+  intended: Excalibur changes the card, not the player's choice.
+
+**Trapper**
+- The team is `MISSION_SIZES[n][m] + 1` riders when on (`propose`, the phone picker,
+  TV copy). It never exceeds the table: the largest is 9 + 1 = 10 riders at 15–16.
+- A new `trap` phase after cards (and after Excalibur): the leader picks any rider,
+  themselves included. That card goes privately to the leader's view and is removed
+  before the shuffle and the fail count.
+- The TV marks the trapped player until the leader taps continue, which starts the
+  quest reveal.
 
 **Lancelot (+ Guinevere)**
 - This is the most invasive module. `isEvil(role)` is used everywhere and assumes a
-  role's side never changes. It needs a state-aware `allegianceOf(s, playerId)` (win
-  checks, card enforcement, assassination targets, views, the game-over cast).
-- Roles: `lancelotGood`, `lancelotEvil` (starting sides), taking one Good and one Evil
-  seat. State: `lancelotSwitched` and a shuffled 5-card switch deck. A draw beat before
-  missions 3–5, public on the TV.
-- Cards are forced by current side (platform rule), so the phone shows the same
-  two-button pattern as Good.
+  role's side never changes. It needs a state-aware `allegianceOf(s, playerId)` for win
+  checks, card enforcement, assassination targets, Lady checks, views and the
+  game-over cast.
+- Roles: `lancelotGood` and `lancelotEvil` (starting sides), taking one Good and one Evil
+  seat inside the normal limits. Excluded from `FLAG_PRIORITY`: a Lancelot never carries
+  the blade.
+- State: `lancelotSwitched`, plus either a shuffled draw deck (V1 and the platform
+  version) or a five-card schedule dealt face up (V2). A public draw beat on the TV
+  before rounds 3–5, resolved before the Lady.
+- Settings (per §2.4): which variant, and Guinevere on/off (Lancelot only).
 - Assassination: a hit on Merlin **or Guinevere** wins for Evil (`assassinate`, the
-  reveal beat, and the game-over copy).
-- Open questions: does the Evil team see the Evil Lancelot? Do Lady checks show
-  current or starting loyalty (presumably current)? Do Lancelots count against
-  Mordred/Morgana seats?
+  reveal beat, the game-over copy).
+- Open questions:
+  1. Should the variants be presets, or independent switches? The underlying choices
+     are: draw schedule (none / hidden draws / known in advance), forced quest cards
+     (on/off), Evil sees the Evil Lancelot (on/off), and Lancelots see each other
+     (on/off). Switches would allow combinations the rulebook doesn't describe, such as
+     Variant 3's night step with switching.
+  2. Variant 2 deals five cards for rounds 1–5. As written, a switch can happen at the
+     start of round 1 or 2. Keep that, or only count rounds 3–5?
+  3. Merlin's view: every version seems to have Merlin see the *starting* Evil Lancelot
+     (the platform says so explicitly). Confirm for the official variants.
 
-**Trapper**
-- Team size is `MISSION_SIZES[n][m] + 1` when on (`propose`, the phone picker, TV
-  copy).
-- A new `trap` phase after cards (and after Excalibur): the leader picks one rider. The
-  leader's view privately gets that card. It's removed before the shuffle and the
-  fail count.
-- Check: at the largest tables, team + 1 must not exceed the player count.
-
-**Discussion timers**: no rules dependency. UI and config only.
+**Discussion timers**
+- **Decided:**
+  - Every decision gets a timer: 2 minutes for proposals, 1 minute for votes and the
+    assassination.
+  - Each timer is adjustable from 10 seconds to 10 minutes.
+  - A soft countdown shows on the TV.
+  - A setting can force the game on at zero, picking at random for anyone who hasn't
+    decided.
+- Random fallbacks go through `secureRandom` (`docs/fairness.md` §1), and each has a
+  natural choice:
+  - Proposal: a random team of the right size.
+  - Vote: random Approve/Reject.
+  - Quest card: Good plays Success; Evil gets a coin flip.
+  - Assassination: a random legal target.
+  - Lady: a random eligible player, then an automatic pass.
+  - Excalibur: skip or a random rider.
+  - Trap: a random rider.
+- Open questions:
+  - What are the default lengths for quest cards, the Lady, Excalibur and the trap?
+  - Does the role reveal ("Take up your sigil") get a timer too?
 
 ---
 

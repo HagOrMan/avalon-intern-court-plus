@@ -14,6 +14,8 @@ export type Phase =
   | "lobby"
   | "setup"
   | "reveal"
+  | "lady"
+  | "ladyReveal"
   | "proposal"
   | "voting"
   | "voteReveal"
@@ -56,6 +58,22 @@ export interface Config {
   oberonHiddenFromMerlin: boolean;
   /** house variant: Good riders may play Fail */
   goodMayFail: boolean;
+  /** Lady of the Lake: loyalty checks before missions 3, 4 and 5 */
+  ladyOfTheLake: boolean;
+}
+
+export interface LadyCheck {
+  holderId: string;
+  targetId: string;
+  /** server only; each holder's view carries their own check's result and nothing else */
+  loyalty: Allegiance;
+}
+
+export interface LadyState {
+  holderId: string;
+  /** everyone who has held the token, current holder included; none of them can be examined */
+  pastHolderIds: string[];
+  checks: LadyCheck[];
 }
 
 export interface MissionRecord {
@@ -115,6 +133,8 @@ export interface GameState {
   history: MissionRecord[];
   assassinTargetId: string | null;
   assassinRevealAt: number | null;
+  /** null when the module is off; absent in rooms saved before it existed */
+  lady?: LadyState | null;
   winner: Allegiance | null;
   winReason: string | null;
   createdAt: number;

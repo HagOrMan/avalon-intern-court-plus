@@ -12,6 +12,7 @@ import {
   evilCount,
   failsNeeded,
   isEvil,
+  minPlayersFor,
 } from "@/lib/rules";
 
 const REJECTION_ORDER: RejectionVariant[] = ["forfeit", "official", "unopposed"];
@@ -104,20 +105,26 @@ export function TvSetup({
     const chosen = on(r);
     // the server keeps the Mistress out while Merlin rests
     const locked = r === "mistress" && !on("merlin");
-    const full = isEvil(r) ? evilChosen >= evil : goodChosen >= good;
-    const blocked = locked || (!chosen && full);
+    // players still join during setup, so an overfull deck is allowed; Begin refuses it
+    const needs = minPlayersFor(chosen ? specials : [...specials, r]);
+    const short = needs === null || needs > n;
     return (
       <div key={r} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ opacity: chosen ? 1 : 0.45 }}>
           {ROLES[r].sigil} {ROLES[r].name}
           {chosen && blade === r && bladeTag}
+          {short && !locked && (
+            <span style={{ color: "var(--evil-text)", font: "600 20px var(--font-body)", marginLeft: 10 }}>
+              {needs === null ? "no court is large enough" : `needs ${needs}+ players`}
+            </span>
+          )}
         </span>
         <button
           onClick={() => toggle(r)}
-          disabled={blocked}
-          style={chosen ? { ...goldBtn, letterSpacing: "0.1em", padding: "6px 18px" } : { ...ghostBtn, letterSpacing: "0.1em", padding: "5px 16px", opacity: blocked ? 0.5 : 1 }}
+          disabled={locked}
+          style={chosen ? { ...goldBtn, letterSpacing: "0.1em", padding: "6px 18px" } : { ...ghostBtn, letterSpacing: "0.1em", padding: "5px 16px", opacity: locked ? 0.5 : 1 }}
         >
-          {chosen ? "IN PLAY" : full && !locked ? "NO SEAT" : "RESTING"}
+          {chosen ? "IN PLAY" : "RESTING"}
         </button>
       </div>
     );
@@ -288,7 +295,14 @@ export function TvSetup({
               "GOOD MUST SUCCEED",
               () => setConfig({ goodMayFail: !v.config.goodMayFail })
             )}
-            {["Discussion timers", "Lady of the Lake", "Excalibur"].map((label) => (
+            {switchRow(
+              "Lady of the Lake",
+              v.config.ladyOfTheLake,
+              "◈ CHECKS BEFORE QUESTS 3–5",
+              "OFF",
+              () => setConfig({ ladyOfTheLake: !v.config.ladyOfTheLake })
+            )}
+            {["Discussion timers", "Excalibur"].map((label) => (
               <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.4 }}>
                 <span>{label}</span>
                 <span style={{ font: "600 18px var(--font-body)", letterSpacing: "0.1em", border: "1px solid rgba(237,230,214,0.3)", padding: "4px 14px" }}>
@@ -299,7 +313,7 @@ export function TvSetup({
           </div>
         ) : (
           <div style={{ font: "400 26px/1.5 var(--font-body)", color: "rgba(237,230,214,0.55)", marginTop: 70 }}>
-            Customize: choose any special role while its side has a free seat. Plain Servants
+            Customize: choose any special role; each notes the players it needs. Plain Servants
             and Minions fill the rest. The Assassin takes a free Evil seat, or the blade passes
             to another Evil role. The last configuration persists for the next game.
           </div>
