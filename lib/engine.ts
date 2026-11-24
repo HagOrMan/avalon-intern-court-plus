@@ -20,6 +20,7 @@ import {
   failsRequired,
   isEvil,
   questRevealMs,
+  secureRandom,
   shuffle,
 } from "./rules";
 
@@ -85,6 +86,18 @@ export function removePlayer(s: GameState, playerId: string): GameState {
   return { ...s, players };
 }
 
+/**
+ * Re-deal the circle: leader rotation follows seat order, which is otherwise join order.
+ * `nextLeader` is kept on purpose — whoever was owed the lead from last game still gets
+ * it first; only who follows them changes. See docs/fairness.md.
+ */
+export function shuffleSeats(s: GameState, rng: () => number = secureRandom): GameState {
+  assert(s.phase === "setup", "Seats can only be shuffled during Court Setup");
+  // `players` array order is the seat order (leader() and the deal index into it)
+  const players = shuffle(s.players, rng).map((p, i) => ({ ...p, seat: i }));
+  return { ...s, players };
+}
+
 export function startSetup(s: GameState): GameState {
   assert(s.phase === "lobby", "Not in the lobby");
   assert(s.players.length >= MIN_PLAYERS, `Need at least ${MIN_PLAYERS} players`);
@@ -117,7 +130,7 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
 }
 
 /** Deal roles and enter the private-reveal phase. */
-export function beginCourt(s: GameState, rng: () => number = Math.random): GameState {
+export function beginCourt(s: GameState, rng: () => number = secureRandom): GameState {
   assert(s.phase === "setup", "Not in Court Setup");
   const n = s.players.length;
   assert(n >= MIN_PLAYERS, `Need at least ${MIN_PLAYERS} players`);
@@ -272,7 +285,7 @@ export function playQuestCard(
   playerId: string,
   card: QuestCard,
   now = Date.now(),
-  rng: () => number = Math.random
+  rng: () => number = secureRandom
 ): GameState {
   assert(s.phase === "quest", "No quest underway");
   assert(s.proposal.includes(playerId), "You do not ride on this mission");

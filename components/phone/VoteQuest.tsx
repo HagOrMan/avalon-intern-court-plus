@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { PlayerView } from "@/lib/views";
+import { secureRandom } from "@/lib/rules";
 
 export function VoteScreen({
   v,
@@ -87,7 +88,7 @@ export function QuestScreen({
   const [castLocal, setCastLocal] = useState<"success" | "fail" | null>(null);
   const cast = v.myCard ?? castLocal;
   // so onlookers can't read the card from whether a thumb went high or low
-  const [failOnTop] = useState(() => Math.random() < 0.5);
+  const [failOnTop] = useState(() => secureRandom() < 0.5);
 
   const play = async (card: "success" | "fail") => {
     setCastLocal(card);

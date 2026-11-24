@@ -32,6 +32,7 @@ private controller. Built from the design handoff in
 - `lib/engine.ts` — pure game rules (deal, propose, vote, quest, assassination)
 - `lib/views.ts` — per-role information filtering (Merlin/Mistress/evil knowledge)
 - `lib/store.ts` — Redis CAS store + dev memory store
+- `docs/fairness.md` — how the deal, leader rotation, shuffles and UI ordering stay fair, with the analysis
 - `components/tv/*` — TV screens (lobby, setup, round table, the dramatic beats)
 - `components/phone/*` — one-decision-per-screen phone controllers
 

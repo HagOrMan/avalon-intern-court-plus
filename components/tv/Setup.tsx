@@ -300,6 +300,33 @@ export function TvSetup({
             game.
           </div>
         )}
+
+        <div style={{ marginTop: 40, borderTop: "1px solid rgba(237,230,214,0.15)", paddingTop: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <span style={{ font: "600 24px var(--font-body)", letterSpacing: "0.18em", color: "rgba(237,230,214,0.5)" }}>
+              LEADERSHIP PASSES
+            </span>
+            <button
+              onClick={() => act("shuffleSeats")}
+              style={{
+                font: "600 20px var(--font-body)",
+                letterSpacing: "0.06em",
+                color: "var(--ground)",
+                background: "var(--gold)",
+                padding: "6px 16px",
+              }}
+            >
+              ⟳ SHUFFLE SEATS
+            </button>
+          </div>
+          <div style={{ font: "500 22px/1.6 var(--font-body)", color: "var(--parchment-75)" }}>
+            {[...v.players]
+              .sort((a, b) => a.seat - b.seat)
+              .map((p) => p.name)
+              .join("  →  ")}
+            <span style={{ color: "rgba(237,230,214,0.4)" }}>  ↺</span>
+          </div>
+        </div>
       </div>
     </div>
   );

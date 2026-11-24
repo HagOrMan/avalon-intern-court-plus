@@ -75,15 +75,32 @@ export function defaultAssassinFlag(playerCount: number): RoleKey {
   return playerCount >= 7 ? "assassin" : "morgana";
 }
 
+/**
+ * Uniform float in [0, 1) with 53 bits from the platform CSPRNG (Web Crypto, present in
+ * Node and browsers). Every game draw defaults to this rather than Math.random, whose
+ * state is shared with everything else in the process and can be reconstructed from its
+ * outputs. See docs/fairness.md.
+ */
+export function secureRandom(): number {
+  const w = new Uint32Array(2);
+  crypto.getRandomValues(w);
+  return ((w[0] >>> 5) * 2 ** 26 + (w[1] >>> 6)) / 2 ** 53; // (27 bits · 2^26 + 26 bits) / 2^53
+}
+
 /** Room codes: 4 uppercase letters, no I/O (0/1 excluded by being letters-only). */
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-export function randomCode(rng: () => number = Math.random): string {
+export function randomCode(rng: () => number = secureRandom): string {
   let s = "";
   for (let i = 0; i < 4; i++) s += CODE_ALPHABET[Math.floor(rng() * CODE_ALPHABET.length)];
   return s;
 }
 
-export function shuffle<T>(arr: T[], rng: () => number = Math.random): T[] {
+/**
+ * Fisher–Yates: every permutation equally likely. The bounds matter — j must range over
+ * [0, i] inclusive. [0, i) is Sattolo's algorithm (no element can stay put) and [0, n) is
+ * the biased "naive" shuffle. See docs/fairness.md.
+ */
+export function shuffle<T>(arr: T[], rng: () => number = secureRandom): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));

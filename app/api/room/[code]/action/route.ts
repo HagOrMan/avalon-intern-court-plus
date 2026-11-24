@@ -11,6 +11,7 @@ import {
   playQuestCard,
   propose,
   removePlayer,
+  shuffleSeats,
   startSetup,
   updateConfig,
   vote,
@@ -40,6 +41,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
             return updateConfig(s, body.config ?? {});
           case "beginCourt":
             return beginCourt(s);
+          case "shuffleSeats":
+            return shuffleSeats(s);
           case "backToLobby":
             if (s.phase !== "setup") throw new GameError("Not in setup");
             return { ...s, phase: "lobby" as const };
