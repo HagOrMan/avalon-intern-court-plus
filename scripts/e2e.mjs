@@ -83,7 +83,7 @@ async function dealAndSwearIn() {
  */
 async function runMission(roleOf, failers, refused = null) {
   let tv = await readView(code, hostToken);
-  const n = tv.missionSizes[tv.mission];
+  const n = tv.teamSize;
   const leaderTok = players.find((p) => p.playerId === tv.leaderId).token;
   const team = refused ? [refused, ...failers] : [...failers];
   for (const p of players) {
@@ -237,7 +237,7 @@ roleOf = await dealAndSwearIn();
 for (let i = 0; i < 5; i++) {
   tv = await readView(code, hostToken);
   const leaderTok = players.find((p) => p.playerId === tv.leaderId).token;
-  const team = players.slice(0, tv.missionSizes[tv.mission]).map((p) => p.playerId);
+  const team = players.slice(0, tv.teamSize).map((p) => p.playerId);
   await act(leaderTok, "propose", { team });
   for (const p of players) await act(p.token, "vote", { vote: "reject" });
   await sleep(6100);
@@ -259,6 +259,76 @@ assert(
   tv.phase === "gameover" && tv.gameover.winner === "good",
   "3 wins with blade sheathed -> good wins outright, no assassination"
 );
+
+/* ---- game 3: Excalibur and Trapper on one quest ---- */
+await act(hostToken, "playAgain");
+await act(hostToken, "updateConfig", { config: { excalibur: true, trapper: true, ladyOfTheLake: false } });
+roleOf = await dealAndSwearIn();
+{
+  tv = await readView(code, hostToken);
+  assert(tv.teamSize === tv.missionSizes[0] + 1, "Trapper adds one rider to the team");
+  const leaderP = players.find((p) => p.playerId === tv.leaderId);
+  const evil = players.find((p) => EVIL.includes(roleOf[p.playerId]));
+  const team = [evil];
+  for (const p of players) if (team.length < tv.teamSize && !team.includes(p)) team.push(p);
+  const ids = team.map((p) => p.playerId);
+
+  let kept = false;
+  try { await act(leaderP.token, "propose", { team: ids, excaliburId: leaderP.playerId }); } catch { kept = true; }
+  assert(kept, "the leader can't keep Excalibur");
+
+  const wielder = team.find((p) => p !== leaderP && p !== evil);
+  await act(leaderP.token, "propose", { team: ids, excaliburId: wielder.playerId });
+  tv = await readView(code, hostToken);
+  assert(tv.excalibur?.holderId === wielder.playerId, "the TV shows who carries Excalibur");
+  for (const p of players) await act(p.token, "vote", { vote: "approve" });
+  await sleep(6100);
+  await act(hostToken, "ack");
+
+  const played = {};
+  for (const p of team) {
+    played[p.playerId] = p === evil ? "fail" : "success";
+    await act(p.token, "questCard", { card: played[p.playerId] });
+  }
+  tv = await readView(code, hostToken);
+  assert(tv.phase === "excalibur", "all cards in -> Excalibur");
+
+  await act(wielder.token, "excalibur", { targetId: evil.playerId });
+  const wv = await readView(code, wielder.token);
+  assert(
+    wv.excaliburSeen.some((e) => e.targetName === evil.name && e.original === "fail"),
+    "the wielder sees the card as originally played"
+  );
+  let leaked = false;
+  for (const p of players.filter((p) => p !== wielder)) {
+    if ((await readView(code, p.token)).excaliburSeen.length) leaked = true;
+  }
+  assert(!leaked, "no one else sees the original card");
+  await act(wielder.token, "excaliburDone");
+  played[evil.playerId] = "success";
+
+  tv = await readView(code, hostToken);
+  assert(tv.phase === "trap", "Excalibur sheathed -> the trap");
+  const trappedP = team.includes(leaderP) ? leaderP : team[team.length - 1];
+  await act(leaderP.token, "trap", { targetId: trappedP.playerId });
+  tv = await readView(code, hostToken);
+  assert(tv.phase === "trapReveal" && tv.trap.targetId === trappedP.playerId, "the TV names the trapped rider");
+  const lv = await readView(code, leaderP.token);
+  assert(
+    lv.trapsSeen.some((t) => t.targetName === trappedP.name && t.card === played[trappedP.playerId]),
+    "the leader sees the trapped card, after the switch"
+  );
+  await act(leaderP.token, "trapDone");
+
+  tv = await readView(code, hostToken);
+  const expectedFails = team.filter((p) => p !== trappedP && played[p.playerId] === "fail").length;
+  assert(
+    tv.phase === "questReveal" &&
+      tv.questReveal.cards.length === tv.missionSizes[0] &&
+      tv.questReveal.fails === expectedFails,
+    "the trapped card is left out and the switched card counts"
+  );
+}
 
 console.log("\nALL PASSED");
 process.exit(0);

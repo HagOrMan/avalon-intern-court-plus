@@ -263,6 +263,10 @@ Ordering and timing can leak information even when the random draws are fair. Au
 | Phone mission button position | Thumb high or low | Randomized (§6). Fine. |
 | Lady of the Lake holder, past holders, whom they examine | Names on TV and phones | Open information under the rules. Fine. |
 | Lady result | Good/Evil, only in the holder's own `playerView` | Hidden until held, shown in neutral colours, never on the TV. Fine. |
+| Excalibur holder; whose card was switched | Names on TV and phones | Public under the rules. Fine. |
+| Excalibur's original card | Only in the wielder's `excaliburSeen` | Hidden until held, neutral colours. Fine. |
+| Trapped rider | Name on TV and phones | Public by design; the card isn't. Fine. |
+| Trapped card | Only in the leader's `trapsSeen` | Hidden until held, neutral colours. Removed before the shuffle, so the reveal order can't hint at it. Fine. |
 | Good rider's mission buttons | Both play Success; red is labelled SUCCESS | Same layout and colours as Evil (§6). Only the label differs, which needs a look at the screen. Fine. |
 | Game-over cast list | Every role, in seat order | Game is over. Fine. |
 

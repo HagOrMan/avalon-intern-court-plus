@@ -302,7 +302,21 @@ export function TvSetup({
               "OFF",
               () => setConfig({ ladyOfTheLake: !v.config.ladyOfTheLake })
             )}
-            {["Discussion timers", "Excalibur"].map((label) => (
+            {switchRow(
+              "Excalibur",
+              v.config.excalibur,
+              "⚔ LEADER ARMS A RIDER",
+              "OFF",
+              () => setConfig({ excalibur: !v.config.excalibur })
+            )}
+            {switchRow(
+              "Trapper",
+              v.config.trapper,
+              "⌖ ONE EXTRA RIDER, ONE CARD TRAPPED",
+              "OFF",
+              () => setConfig({ trapper: !v.config.trapper })
+            )}
+            {["Discussion timers"].map((label) => (
               <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.4 }}>
                 <span>{label}</span>
                 <span style={{ font: "600 18px var(--font-body)", letterSpacing: "0.1em", border: "1px solid rgba(237,230,214,0.3)", padding: "4px 14px" }}>

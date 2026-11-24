@@ -11,7 +11,7 @@ import type {
 } from "./types";
 import { ROLES } from "./roles";
 import { MISSION_SIZES, failsNeeded, isEvil, normalizeConfig } from "./rules";
-import { ladyTargets, leader } from "./engine";
+import { currentExcalibur, currentTrap, ladyTargets, leader } from "./engine";
 
 const PRESENCE_MS = 15000;
 
@@ -57,6 +57,19 @@ interface CommonView {
     /** during ladyReveal, the player being examined */
     examinedName: string | null;
   } | null;
+  /** riders the leader picks this mission: the mission size, +1 with Trapper */
+  teamSize: number;
+  excaliburOn: boolean;
+  /** this proposal's sword: who holds it is public, and so is whose card it switched */
+  excalibur: {
+    holderId: string;
+    holderName: string;
+    resolved: boolean;
+    /** null while unresolved or when sheathed */
+    targetName: string | null;
+  } | null;
+  /** this mission's trapped rider; the card itself never appears here */
+  trap: { targetId: string; targetName: string } | null;
   serverNow: number;
 }
 
@@ -112,6 +125,12 @@ export interface PlayerView extends CommonView {
   ladyTargets: { id: string; name: string }[] | null;
   /** this player's own Lady check, if they made one; no one else's view carries it */
   ladyResult: { targetName: string; loyalty: Allegiance } | null;
+  /** set only for the wielder while choosing: the other riders */
+  excaliburTargets: { id: string; name: string }[] | null;
+  /** original cards this player saw by switching them; only the wielder's view carries these */
+  excaliburSeen: { mission: number; targetName: string; original: QuestCard }[];
+  /** cards this player trapped as leader; only their view carries these */
+  trapsSeen: { mission: number; targetName: string; card: QuestCard }[];
   gameover: { winner: string; winReason: string; myRole: RoleKey; cast: CastEntry[] } | null;
   paused: boolean;
 }
@@ -157,6 +176,27 @@ function common(s: GameState, seen: Record<string, number>, now: number): Common
               : null,
         }
       : null,
+    teamSize:
+      (MISSION_SIZES[s.players.length] ?? MISSION_SIZES[5])[s.mission] +
+      (s.config.trapper === true ? 1 : 0),
+    excaliburOn: s.config.excalibur === true,
+    excalibur: (() => {
+      const holderId = s.excaliburHolderId;
+      if (!holderId) return null;
+      const use = ["excalibur", "excaliburReveal", "trap", "trapReveal", "questReveal"].includes(s.phase)
+        ? currentExcalibur(s)
+        : null;
+      return {
+        holderId,
+        holderName: idToName(holderId),
+        resolved: !!use,
+        targetName: use?.targetId ? idToName(use.targetId) : null,
+      };
+    })(),
+    trap: (() => {
+      const t = ["trapReveal", "questReveal"].includes(s.phase) ? currentTrap(s) : null;
+      return t ? { targetId: t.targetId, targetName: idToName(t.targetId) } : null;
+    })(),
     serverNow: now,
   };
 }
@@ -331,6 +371,28 @@ export function playerView(
             .sort((a, b) => a.seat - b.seat)
             .map((p) => ({ id: p.id, name: p.name }))
         : null,
+    excaliburTargets:
+      s.phase === "excalibur" && s.excaliburHolderId === playerId
+        ? s.proposal
+            .filter((id) => id !== playerId)
+            .map((id) => s.players.find((p) => p.id === id)!)
+            .sort((a, b) => a.seat - b.seat)
+            .map((p) => ({ id: p.id, name: p.name }))
+        : null,
+    excaliburSeen: (s.excaliburLog ?? [])
+      .filter((e) => e.holderId === playerId && e.targetId && e.original)
+      .map((e) => ({
+        mission: e.mission,
+        targetName: s.players.find((p) => p.id === e.targetId)?.name ?? "?",
+        original: e.original!,
+      })),
+    trapsSeen: (s.trapLog ?? [])
+      .filter((t) => t.leaderId === playerId)
+      .map((t) => ({
+        mission: t.mission,
+        targetName: s.players.find((p) => p.id === t.targetId)?.name ?? "?",
+        card: t.card,
+      })),
     ladyResult: (() => {
       const mine = s.lady?.checks.find((c) => c.holderId === playerId);
       if (!mine) return null;

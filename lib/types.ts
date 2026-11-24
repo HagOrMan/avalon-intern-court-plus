@@ -20,6 +20,10 @@ export type Phase =
   | "voting"
   | "voteReveal"
   | "quest"
+  | "excalibur"
+  | "excaliburReveal"
+  | "trap"
+  | "trapReveal"
   | "questReveal"
   | "assassination"
   | "assassinationReveal"
@@ -60,6 +64,27 @@ export interface Config {
   goodMayFail: boolean;
   /** Lady of the Lake: loyalty checks before missions 3, 4 and 5 */
   ladyOfTheLake: boolean;
+  /** Excalibur: the leader arms one rider, who may switch another rider's played card */
+  excalibur: boolean;
+  /** Trapper (Hostile Intent): one extra rider; the leader removes and privately sees one card */
+  trapper: boolean;
+}
+
+/** One mission's Excalibur outcome. `original` is server only, shown to the wielder alone. */
+export interface ExcaliburUse {
+  mission: number;
+  holderId: string;
+  /** null = the wielder sheathed the sword */
+  targetId: string | null;
+  original: QuestCard | null;
+}
+
+/** One mission's trap. `card` (after any Excalibur switch) is server only, shown to the leader alone. */
+export interface TrapRecord {
+  mission: number;
+  leaderId: string;
+  targetId: string;
+  card: QuestCard;
 }
 
 export interface LadyCheck {
@@ -135,6 +160,10 @@ export interface GameState {
   assassinRevealAt: number | null;
   /** null when the module is off; absent in rooms saved before it existed */
   lady?: LadyState | null;
+  /** the rider the leader armed for the current proposal */
+  excaliburHolderId?: string | null;
+  excaliburLog?: ExcaliburUse[];
+  trapLog?: TrapRecord[];
   winner: Allegiance | null;
   winReason: string | null;
   createdAt: number;

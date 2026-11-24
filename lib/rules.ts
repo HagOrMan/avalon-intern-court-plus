@@ -69,6 +69,8 @@ export function normalizeConfig(c: StoredConfig): Config {
     oberonHiddenFromMerlin: c.oberonHiddenFromMerlin === true,
     goodMayFail: c.goodMayFail === true,
     ladyOfTheLake: c.ladyOfTheLake === true,
+    excalibur: c.excalibur === true,
+    trapper: c.trapper === true,
   };
 }
 

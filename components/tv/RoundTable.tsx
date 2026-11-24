@@ -169,7 +169,7 @@ export function RoundTable({ v }: { v: TvView }) {
       return (
         <>
           <span style={{ color: "var(--gold)" }}>{v.leaderName}</span> chooses{" "}
-          {v.missionSizes[v.mission]} for Mission {v.mission + 1}…
+          {v.teamSize} for Mission {v.mission + 1}…
         </>
       );
     }
@@ -190,6 +190,36 @@ export function RoundTable({ v }: { v: TvView }) {
         <>
           <span style={{ color: "var(--gold)" }}>{names}</span> ride for Mission {v.mission + 1}{" "}
           · {v.quest?.cardsIn} of {v.quest?.cardsNeeded} cards cast
+        </>
+      );
+    }
+    if (v.phase === "excalibur") {
+      return (
+        <>
+          <span style={{ color: "var(--gold)" }}>⚔ {v.excalibur?.holderName}</span> weighs Excalibur…
+        </>
+      );
+    }
+    if (v.phase === "excaliburReveal") {
+      return (
+        <>
+          {v.excalibur?.holderName} switches{" "}
+          <span style={{ color: "var(--gold)" }}>{v.excalibur?.targetName}</span>&apos;s card
+        </>
+      );
+    }
+    if (v.phase === "trap") {
+      return (
+        <>
+          <span style={{ color: "var(--gold)" }}>{v.leaderName}</span> sets the trap…
+        </>
+      );
+    }
+    if (v.phase === "trapReveal") {
+      return (
+        <>
+          {v.leaderName} has trapped{" "}
+          <span style={{ color: "var(--gold)" }}>{v.trap?.targetName}</span>&apos;s card
         </>
       );
     }
@@ -267,6 +297,16 @@ export function RoundTable({ v }: { v: TvView }) {
             >
               {p.name}
             </div>
+            {v.excalibur?.holderId === p.id && (
+              <div style={{ font: `600 ${crowded ? 14 : 16}px var(--font-body)`, letterSpacing: "0.1em", color: "var(--gold)" }}>
+                ⚔ EXCALIBUR
+              </div>
+            )}
+            {v.trap?.targetId === p.id && (
+              <div className="rise-in" style={{ font: `700 ${crowded ? 16 : 20}px var(--font-body)`, letterSpacing: "0.1em", color: "var(--gold)" }}>
+                ⌖ TRAPPED
+              </div>
+            )}
             {v.lady?.holderId === p.id && (
               <div style={{ font: `600 ${crowded ? 14 : 16}px var(--font-body)`, letterSpacing: "0.1em", color: "var(--gold)" }}>
                 ◈ LADY

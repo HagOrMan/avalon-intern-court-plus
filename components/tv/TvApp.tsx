@@ -183,6 +183,10 @@ export function TvApp({
       case "proposal":
       case "voting":
       case "quest":
+      case "excalibur":
+      case "excaliburReveal":
+      case "trap":
+      case "trapReveal":
         return <RoundTable v={v} />;
       case "voteReveal":
         return <VoteReveal v={v} clockOffset={clockOffset} />;

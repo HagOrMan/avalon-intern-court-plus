@@ -9,6 +9,7 @@ import { ProposeScreen } from "./Propose";
 import { QuestScreen, VoteScreen } from "./VoteQuest";
 import { AssassinScreen } from "./Assassin";
 import { LadyChooseScreen, LadyResultScreen, LadyVerdict } from "./Lady";
+import { CardLine, ExcaliburScreen, ExcaliburSeenScreen, TrapScreen, TrapSeenScreen } from "./Sword";
 import { Plate } from "@/components/Plate";
 import { MAX_PLAYERS } from "@/lib/rules";
 
@@ -81,6 +82,12 @@ function RolePeek({ v }: { v: PlayerView }) {
             </div>
           )}
           {v.ladyResult && <LadyVerdict result={v.ladyResult} />}
+          {v.excaliburSeen.map((e) => (
+            <CardLine key={`x${e.mission}`} label={`EXCALIBUR · MISSION ${e.mission + 1}`} name={e.targetName} card={e.original} />
+          ))}
+          {v.trapsSeen.map((t) => (
+            <CardLine key={`t${t.mission}`} label={`TRAPPED · MISSION ${t.mission + 1}`} name={t.targetName} card={t.card} />
+          ))}
           <div
             style={{
               font: "600 11px var(--font-body)",
@@ -252,7 +259,7 @@ export function Controller({
         return (
           <Waiting
             title={`${v.leaderName} considers the court…`}
-            sub={`They must choose ${v.missionSizes[v.mission]} for Mission ${v.mission + 1}.`}
+            sub={`They must choose ${v.teamSize} for Mission ${v.mission + 1}.`}
           />
         );
       case "voting":
@@ -274,6 +281,33 @@ export function Controller({
           <Waiting
             title={`${v.proposalNames.join(" and ")} ride for Mission ${v.mission + 1}`}
             sub={`${v.cardsIn} of ${v.cardsNeeded} cards cast.`}
+          />
+        );
+      case "excalibur":
+        if (v.excaliburTargets) return <ExcaliburScreen v={v} act={act} />;
+        return (
+          <Waiting
+            title={`${v.excalibur?.holderName} weighs Excalibur…`}
+            sub="They may switch one rider's played card."
+          />
+        );
+      case "excaliburReveal":
+        if (v.excalibur?.holderId === v.me.id) return <ExcaliburSeenScreen v={v} act={act} />;
+        return (
+          <Waiting
+            title={`${v.excalibur?.holderName} turns Excalibur on ${v.excalibur?.targetName}`}
+            sub="One played card has been switched."
+          />
+        );
+      case "trap":
+        if (v.isLeader) return <TrapScreen v={v} act={act} />;
+        return <Waiting title={`${v.leaderName} sets the trap…`} sub="One rider's card will be taken out of the quest." />;
+      case "trapReveal":
+        if (v.isLeader) return <TrapSeenScreen v={v} act={act} />;
+        return (
+          <Waiting
+            title={`${v.leaderName} has trapped ${v.trap?.targetName}`}
+            sub="Only the leader sees that card. What they say about it is up to them."
           />
         );
       case "questReveal":

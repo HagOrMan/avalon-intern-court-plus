@@ -60,6 +60,11 @@ export function VoteScreen({
         {v.leaderName} proposes
         <br />
         {v.proposalNames.join(" · ")}
+        {v.excalibur && (
+          <div style={{ font: "500 13px var(--font-body)", color: "var(--gold)", marginTop: 4 }}>
+            ⚔ {v.excalibur.holderName} carries Excalibur
+          </div>
+        )}
       </div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
         <button className="vote-btn approve" onClick={() => voteFor("approve")}>

@@ -1,10 +1,12 @@
 import type {
   Config,
+  ExcaliburUse,
   GameState,
   MissionRecord,
   Player,
   QuestCard,
   RoleKey,
+  TrapRecord,
   Vote,
 } from "./types";
 import {
@@ -56,6 +58,9 @@ export function createRoom(code: string, hostToken: string, now = Date.now()): G
     assassinTargetId: null,
     assassinRevealAt: null,
     lady: null,
+    excaliburHolderId: null,
+    excaliburLog: [],
+    trapLog: [],
     winner: null,
     winReason: null,
     createdAt: now,
@@ -131,6 +136,8 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
       oberonHiddenFromMerlin: !!(cfg.oberonHiddenFromMerlin ?? cur.oberonHiddenFromMerlin),
       goodMayFail: !!(cfg.goodMayFail ?? cur.goodMayFail),
       ladyOfTheLake: !!(cfg.ladyOfTheLake ?? cur.ladyOfTheLake),
+      excalibur: !!(cfg.excalibur ?? cur.excalibur),
+      trapper: !!(cfg.trapper ?? cur.trapper),
     },
   };
 }
@@ -177,6 +184,9 @@ export function beginCourt(s: GameState, rng: () => number = secureRandom): Game
     history: [],
     assassinTargetId: null,
     assassinRevealAt: null,
+    excaliburHolderId: null,
+    excaliburLog: [],
+    trapLog: [],
     winner: null,
     winReason: null,
   };
@@ -204,8 +214,9 @@ export function leader(s: GameState): Player {
   return s.players[s.leaderIndex % s.players.length];
 }
 
-function missionSize(s: GameState): number {
-  return MISSION_SIZES[s.players.length][s.mission];
+/** Riders the leader picks: the mission size, plus one for the Trapper to remove. */
+export function teamSize(s: GameState): number {
+  return MISSION_SIZES[s.players.length][s.mission] + (s.config.trapper === true ? 1 : 0);
 }
 
 /** In the unopposed variant, the 5th proposal after 4 rejections skips the vote entirely. */
@@ -213,19 +224,32 @@ function isUnopposedProposal(s: GameState): boolean {
   return s.config.rejectionVariant === "unopposed" && s.rejections >= 4;
 }
 
-export function propose(s: GameState, playerId: string, team: string[]): GameState {
+export function propose(
+  s: GameState,
+  playerId: string,
+  team: string[],
+  excaliburId: string | null = null
+): GameState {
   assert(s.phase === "proposal", "Not accepting proposals");
   assert(leader(s).id === playerId, "Only the leader proposes");
   const unique = [...new Set(team)];
-  assert(unique.length === missionSize(s), `Choose exactly ${missionSize(s)}`);
+  const size = teamSize(s);
+  assert(unique.length === size, `Choose exactly ${size}`);
   assert(
     unique.every((id) => s.players.some((p) => p.id === id)),
     "Unknown player in proposal"
   );
+  let excaliburHolderId: string | null = null;
+  if (s.config.excalibur === true) {
+    assert(excaliburId && unique.includes(excaliburId), "Give Excalibur to a rider");
+    assert(excaliburId !== playerId, "The leader cannot keep Excalibur");
+    excaliburHolderId = excaliburId;
+  }
   if (isUnopposedProposal(s)) {
     return {
       ...s,
       proposal: unique,
+      excaliburHolderId,
       votes: {},
       voteMeta: null,
       lastVote: { approve: 0, reject: 0, unopposed: true },
@@ -233,7 +257,7 @@ export function propose(s: GameState, playerId: string, team: string[]): GameSta
       phase: "quest",
     };
   }
-  return { ...s, proposal: unique, votes: {}, voteMeta: null, phase: "voting" };
+  return { ...s, proposal: unique, excaliburHolderId, votes: {}, voteMeta: null, phase: "voting" };
 }
 
 export function vote(s: GameState, playerId: string, v: Vote, now = Date.now()): GameState {
@@ -293,6 +317,7 @@ export function ackVoteReveal(s: GameState, now = Date.now(), force = false): Ga
     rejections,
     leaderIndex: (s.leaderIndex + 1) % s.players.length,
     proposal: [],
+    excaliburHolderId: null,
     phase: "proposal",
   };
 }
@@ -314,14 +339,95 @@ export function playQuestCard(
   );
   const questCards = { ...s.questCards, [playerId]: card };
   const next: GameState = { ...s, questCards };
-  if (Object.keys(questCards).length === s.proposal.length) {
-    const cards = shuffle(Object.values(questCards), rng);
-    const fails = cards.filter((c) => c === "fail").length;
-    const success = fails < failsNeeded(s.players.length)[s.mission];
-    next.phase = "questReveal";
-    next.questMeta = { cards, fails, success, revealAt: now };
+  if (Object.keys(questCards).length < s.proposal.length) return next;
+  if (s.excaliburHolderId) return { ...next, phase: "excalibur" };
+  return afterExcalibur(next, now, rng);
+}
+
+/** Once the sword has resolved (or there was none): the trap, else straight to the reveal. */
+function afterExcalibur(s: GameState, now: number, rng: () => number): GameState {
+  if (s.config.trapper === true) return { ...s, phase: "trap" };
+  return revealQuest(s, now, rng);
+}
+
+/** Shuffle the counted cards (all of them, less any trapped one) and start the reveal beat. */
+function revealQuest(s: GameState, now: number, rng: () => number): GameState {
+  const trapped = currentTrap(s)?.targetId;
+  const counted = s.proposal.filter((id) => id !== trapped).map((id) => s.questCards[id]);
+  const cards = shuffle(counted, rng);
+  const fails = cards.filter((c) => c === "fail").length;
+  const success = fails < failsNeeded(s.players.length)[s.mission];
+  return { ...s, phase: "questReveal", questMeta: { cards, fails, success, revealAt: now } };
+}
+
+export function currentExcalibur(s: GameState): ExcaliburUse | null {
+  return s.excaliburLog?.find((e) => e.mission === s.mission) ?? null;
+}
+
+export function currentTrap(s: GameState): TrapRecord | null {
+  return s.trapLog?.find((t) => t.mission === s.mission) ?? null;
+}
+
+/**
+ * The wielder switches another rider's played card (targetId) or sheathes the sword (null).
+ * A switch goes on to a private beat where only the wielder sees the original card.
+ */
+export function wieldExcalibur(
+  s: GameState,
+  playerId: string,
+  targetId: string | null,
+  now = Date.now(),
+  rng: () => number = secureRandom
+): GameState {
+  assert(s.phase === "excalibur", "Excalibur is not drawn");
+  assert(s.excaliburHolderId === playerId, "Excalibur is not yours");
+  if (targetId === null) {
+    const log = [...(s.excaliburLog ?? []), { mission: s.mission, holderId: playerId, targetId: null, original: null }];
+    return afterExcalibur({ ...s, excaliburLog: log }, now, rng);
   }
-  return next;
+  assert(targetId !== playerId, "Excalibur cannot turn on its wielder");
+  assert(s.proposal.includes(targetId), "Excalibur reaches only the company");
+  const original = s.questCards[targetId];
+  const switched: QuestCard = original === "success" ? "fail" : "success";
+  return {
+    ...s,
+    phase: "excaliburReveal",
+    questCards: { ...s.questCards, [targetId]: switched },
+    excaliburLog: [...(s.excaliburLog ?? []), { mission: s.mission, holderId: playerId, targetId, original }],
+  };
+}
+
+/** The wielder has seen the original card. */
+export function excaliburDone(
+  s: GameState,
+  playerId: string,
+  now = Date.now(),
+  rng: () => number = secureRandom
+): GameState {
+  assert(s.phase === "excaliburReveal", "Excalibur is sheathed");
+  assert(s.excaliburHolderId === playerId, "Excalibur is not yours");
+  return afterExcalibur(s, now, rng);
+}
+
+/** The leader removes one rider's card (their own allowed) and sees it in private. */
+export function trapCard(s: GameState, playerId: string, targetId: string): GameState {
+  assert(s.phase === "trap", "No trap is set");
+  assert(leader(s).id === playerId, "Only the leader sets the trap");
+  assert(s.proposal.includes(targetId), "The trap reaches only the company");
+  const record = { mission: s.mission, leaderId: playerId, targetId, card: s.questCards[targetId] };
+  return { ...s, phase: "trapReveal", trapLog: [...(s.trapLog ?? []), record] };
+}
+
+/** The leader has seen the trapped card; the rest are revealed. */
+export function trapDone(
+  s: GameState,
+  playerId: string,
+  now = Date.now(),
+  rng: () => number = secureRandom
+): GameState {
+  assert(s.phase === "trapReveal", "No trap is sprung");
+  assert(leader(s).id === playerId, "Only the leader sets the trap");
+  return revealQuest(s, now, rng);
 }
 
 export function ackQuestReveal(s: GameState, now = Date.now(), force = false): GameState {
@@ -352,6 +458,7 @@ function closeMission(s: GameState, record: MissionRecord): GameState {
     questMeta: null,
     lastVote: null,
     proposal: [],
+    excaliburHolderId: null,
   };
   if (losses >= 3) {
     return {

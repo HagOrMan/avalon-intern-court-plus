@@ -6,6 +6,7 @@ import {
   ackVoteReveal,
   assassinate,
   beginCourt,
+  excaliburDone,
   ladyExamine,
   ladyPass,
   playAgain,
@@ -15,8 +16,11 @@ import {
   removePlayer,
   shuffleSeats,
   startSetup,
+  trapCard,
+  trapDone,
   updateConfig,
   vote,
+  wieldExcalibur,
 } from "@/lib/engine";
 import { mutateRoom } from "@/lib/store";
 import type { GameState } from "@/lib/types";
@@ -70,7 +74,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
         case "leave":
           return removePlayer(s, player.id);
         case "propose":
-          return propose(s, player.id, body.team ?? []);
+          return propose(s, player.id, body.team ?? [], body.excaliburId ?? null);
         case "vote":
           return vote(s, player.id, body.vote);
         case "questCard":
@@ -81,6 +85,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
           return ladyExamine(s, player.id, body.targetId);
         case "ladyPass":
           return ladyPass(s, player.id);
+        case "excalibur":
+          return wieldExcalibur(s, player.id, body.targetId ?? null);
+        case "excaliburDone":
+          return excaliburDone(s, player.id);
+        case "trap":
+          return trapCard(s, player.id, body.targetId);
+        case "trapDone":
+          return trapDone(s, player.id);
         default:
           throw new GameError("Unknown action");
       }

@@ -11,9 +11,14 @@ export function ProposeScreen({
   act: (a: string, p?: Record<string, unknown>) => Promise<boolean>;
 }) {
   const [picked, setPicked] = useState<string[]>([]);
+  const [sword, setSword] = useState<string | null>(null);
   const [stamped, setStamped] = useState(false);
-  const n = v.missionSizes[v.mission];
+  const n = v.teamSize;
   const remaining = n - picked.length;
+  // the leader can't keep Excalibur, so it goes to another rider before proposing
+  const needsSword = v.excaliburOn && remaining === 0 && !(sword && picked.includes(sword));
+  const swordChoices = picked.filter((id) => id !== v.me.id);
+  const nameOf = (id: string) => v.players.find((p) => p.id === id)?.name ?? "?";
 
   const toggle = (id: string) => {
     setPicked((cur) =>
@@ -23,7 +28,7 @@ export function ProposeScreen({
 
   const confirm = async () => {
     setStamped(true);
-    const ok = await act("propose", { team: picked });
+    const ok = await act("propose", { team: picked, excaliburId: v.excaliburOn ? sword : null });
     if (!ok) setStamped(false);
   };
 
@@ -61,21 +66,42 @@ export function ProposeScreen({
                   {p.id === v.me.id ? " (you)" : ""}
                 </span>
                 <span style={{ color: isPicked ? "var(--gold)" : "rgba(237,230,214,0.3)" }}>
-                  {isPicked ? "✦ chosen" : "○"}
+                  {isPicked ? (sword === p.id && v.excaliburOn ? "⚔ Excalibur" : "✦ chosen") : "○"}
                 </span>
               </button>
             );
           })}
       </div>
+      {v.excaliburOn && remaining === 0 && (
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ font: "600 11px var(--font-body)", letterSpacing: "0.12em", color: "var(--parchment-55)", textAlign: "center" }}>
+            ⚔ GIVE EXCALIBUR TO
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+            {swordChoices.map((id) => (
+              <button
+                key={id}
+                className={sword === id ? "btn-gold" : "btn-ghost"}
+                style={{ width: "auto", padding: "6px 12px", fontSize: 13 }}
+                onClick={() => setSword(id)}
+              >
+                {nameOf(id)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <button
-        className={remaining === 0 ? `btn-gold${stamped ? " stamp-in" : ""}` : "btn-ghost"}
-        style={{ marginTop: "auto", opacity: remaining === 0 ? 1 : 0.4 }}
-        disabled={remaining !== 0 || stamped}
+        className={remaining === 0 && !needsSword ? `btn-gold${stamped ? " stamp-in" : ""}` : "btn-ghost"}
+        style={{ marginTop: "auto", opacity: remaining === 0 && !needsSword ? 1 : 0.4 }}
+        disabled={remaining !== 0 || needsSword || stamped}
         onClick={confirm}
       >
-        {remaining === 0
-          ? "Propose this company"
-          : `Propose — choose ${remaining} more`}
+        {remaining !== 0
+          ? `Propose — choose ${remaining} more`
+          : needsSword
+            ? "Give Excalibur to a rider"
+            : "Propose this company"}
       </button>
     </div>
   );
