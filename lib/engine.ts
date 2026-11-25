@@ -1,4 +1,5 @@
 import type {
+  AllegianceCard,
   Config,
   ExcaliburUse,
   GameState,
@@ -13,6 +14,8 @@ import {
   ASSASSIN_REVEAL_MS,
   AUTO_ADVANCE_GRACE_MS,
   BLADE_CHOICES,
+  LANCELOT_HIDDEN_DECK,
+  LANCELOT_KNOWN_DECK,
   MAX_PLAYERS,
   MIN_PLAYERS,
   MISSION_SIZES,
@@ -117,6 +120,19 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
   // the Mistress's sight is built around Merlin; without him she would see Morgana alone
   if (!specials.includes("merlin") && specials.includes("mistress"))
     specials.splice(specials.indexOf("mistress"), 1);
+  // the Lancelots are one pair: adding or removing either side does both
+  const hadPair = cur.specials.includes("lancelotGood");
+  const pairOn = hadPair
+    ? specials.includes("lancelotGood") && specials.includes("lancelotEvil")
+    : specials.includes("lancelotGood") || specials.includes("lancelotEvil");
+  for (const r of ["lancelotGood", "lancelotEvil"] as RoleKey[]) {
+    if (pairOn && !specials.includes(r)) specials.push(r);
+    if (!pairOn && specials.includes(r)) specials.splice(specials.indexOf(r), 1);
+  }
+  // Guinevere's sight is the Lancelots; without them she has nothing to see
+  if (!pairOn && specials.includes("guinevere")) specials.splice(specials.indexOf("guinevere"), 1);
+  const lancelotSchedule = cfg.lancelotSchedule ?? cur.lancelotSchedule;
+  assert(["none", "hidden", "known"].includes(lancelotSchedule), "Unknown Lancelot schedule");
   // seat counts aren't checked here: players can still join during setup, so an overfull
   // deck is allowed and refused at beginCourt
   const assassinFlag = cfg.assassinFlag ?? cur.assassinFlag;
@@ -138,6 +154,10 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
       ladyOfTheLake: !!(cfg.ladyOfTheLake ?? cur.ladyOfTheLake),
       excalibur: !!(cfg.excalibur ?? cur.excalibur),
       trapper: !!(cfg.trapper ?? cur.trapper),
+      lancelotSchedule,
+      lancelotForcedCards: !!(cfg.lancelotForcedCards ?? cur.lancelotForcedCards),
+      lancelotEvilKnown: !!(cfg.lancelotEvilKnown ?? cur.lancelotEvilKnown),
+      lancelotsMeet: !!(cfg.lancelotsMeet ?? cur.lancelotsMeet),
     },
   };
 }
@@ -169,6 +189,17 @@ export function beginCourt(s: GameState, rng: () => number = secureRandom): Game
     flagHolderId,
     lady: config.ladyOfTheLake
       ? { holderId: ladyStart, pastHolderIds: [ladyStart], checks: [] }
+      : null,
+    lancelot: config.specials.includes("lancelotGood")
+      ? {
+          switched: false,
+          deck: config.lancelotSchedule === "hidden" ? shuffle(LANCELOT_HIDDEN_DECK, rng) : [],
+          schedule:
+            config.lancelotSchedule === "known"
+              ? shuffle(LANCELOT_KNOWN_DECK, rng).slice(0, 5)
+              : null,
+          flips: [],
+        }
       : null,
     players: s.players.map((p) => ({ ...p, ready: false })),
     leaderIndex,
@@ -206,8 +237,47 @@ export function playerReady(s: GameState, playerId: string): GameState {
   assert(s.phase === "reveal", "Not in the reveal phase");
   const players = s.players.map((p) => (p.id === playerId ? { ...p, ready: true } : p));
   const next: GameState = { ...s, players };
-  if (players.every((p) => p.ready)) next.phase = "proposal";
-  return next;
+  if (!players.every((p) => p.ready)) return next;
+  return { ...startRound(next, 0), phase: "proposal" };
+}
+
+/**
+ * A player's current side. The same as their role's, except that the Lancelots trade
+ * sides while `lancelot.switched` is set.
+ */
+export function allegianceOf(s: GameState, playerId: string): "good" | "evil" {
+  const role = s.roles[playerId];
+  const starting = isEvil(role) ? "evil" : "good";
+  const lancelot = role === "lancelotGood" || role === "lancelotEvil";
+  if (!lancelot || !s.lancelot?.switched) return starting;
+  return starting === "evil" ? "good" : "evil";
+}
+
+/**
+ * Resolve the allegiance card for the start of a round (mission index), if any: the
+ * face-up schedule covers rounds 1–5; hidden draws flip one card for rounds 3–5.
+ */
+function startRound(s: GameState, mission: number): GameState {
+  const l = s.lancelot;
+  if (!l) return s;
+  let card: AllegianceCard | undefined;
+  let deck = l.deck;
+  if (l.schedule) {
+    card = l.schedule[mission];
+  } else if (mission >= 2 && deck.length) {
+    card = deck[0];
+    deck = deck.slice(1);
+  }
+  if (!card) return s;
+  return {
+    ...s,
+    lancelot: {
+      ...l,
+      deck,
+      switched: card === "switch" ? !l.switched : l.switched,
+      flips: [...l.flips, { round: mission + 1, card }],
+    },
+  };
 }
 
 export function leader(s: GameState): Player {
@@ -333,8 +403,13 @@ export function playQuestCard(
   assert(s.proposal.includes(playerId), "You do not ride on this mission");
   assert(!(playerId in s.questCards), "Your card is cast");
   assert(card === "success" || card === "fail", "Unknown card");
+  const side = allegianceOf(s, playerId);
+  const role = s.roles[playerId];
+  if ((role === "lancelotGood" || role === "lancelotEvil") && s.config.lancelotForcedCards === true) {
+    assert(card === (side === "evil" ? "fail" : "success"), "Lancelot's heart decides this card");
+  }
   assert(
-    card === "success" || isEvil(s.roles[playerId]) || s.config.goodMayFail === true,
+    card === "success" || side === "evil" || s.config.goodMayFail === true,
     "The loyal cannot fail a quest"
   );
   const questCards = { ...s.questCards, [playerId]: card };
@@ -479,10 +554,11 @@ function closeMission(s: GameState, record: MissionRecord): GameState {
       winReason: "Three quests won. With no blade raised against Merlin, the light holds.",
     };
   }
-  // the Lady examines after quests 2, 3 and 4 are resolved, forfeits included
+  // the Lady examines after quests 2, 3 and 4 are resolved, forfeits included.
+  // The next round's allegiance card resolves first, so she sees a Lancelot's new side.
   const ladyTurn = !!s.lady && record.mission >= 1 && record.mission <= 3;
   return {
-    ...base,
+    ...startRound(base, s.mission + 1),
     mission: s.mission + 1,
     rejections: 0,
     leaderIndex: (s.leaderIndex + 1) % s.players.length,
@@ -505,7 +581,7 @@ export function ladyExamine(s: GameState, playerId: string, targetId: string): G
     ladyTargets(s).some((p) => p.id === targetId),
     "That courtier has borne the Lady and cannot be examined"
   );
-  const loyalty = isEvil(s.roles[targetId]) ? "evil" : "good";
+  const loyalty = allegianceOf(s, targetId);
   return {
     ...s,
     phase: "ladyReveal",
@@ -540,14 +616,9 @@ export function assassinate(
   assert(targetId !== playerId, "You cannot strike yourself");
   const target = s.players.find((p) => p.id === targetId);
   assert(target, "Unknown target");
-  // targets are players not unmasked as Evil to the flag holder:
-  // all evil is off the table except Oberon, whom his own side cannot see
+  assert(!knownEvilTo(s, playerId).includes(targetId), "That courtier already serves Mordred");
   const targetRole = s.roles[targetId];
-  const holderRole = s.roles[playerId];
-  const knownEvil =
-    isEvil(targetRole) && targetRole !== "oberon" && holderRole !== "oberon";
-  assert(!knownEvil, "That courtier already serves Mordred");
-  const hit = targetRole === "merlin";
+  const hit = isAssassinMark(targetRole);
   return {
     ...s,
     assassinTargetId: targetId,
@@ -555,9 +626,34 @@ export function assassinate(
     phase: "assassinationReveal",
     winner: hit ? "evil" : "good",
     winReason: hit
-      ? `The blade finds Merlin. ${target.name} falls, and with him the light.`
+      ? targetRole === "guinevere"
+        ? `The blade finds Guinevere. ${target.name} falls, and the court breaks with her.`
+        : `The blade finds Merlin. ${target.name} falls, and with him the light.`
       : `The blade misses. ${target.name} was no wizard — the light holds.`,
   };
+}
+
+/** Roles whose death at the blade wins the game for Evil. */
+export function isAssassinMark(role: RoleKey): boolean {
+  return role === "merlin" || role === "guinevere";
+}
+
+/**
+ * Players the blade holder saw as Evil at night, and so can't target: their Evil kin,
+ * less Oberon (unseen) and the Evil Lancelot unless that variant shows him. Oberon
+ * holding the blade saw no one. Night sight is fixed, so a later Lancelot switch doesn't
+ * change this.
+ */
+export function knownEvilTo(s: GameState, holderId: string): string[] {
+  const holderRole = s.roles[holderId];
+  if (holderRole === "oberon" || holderRole === "lancelotEvil") return [];
+  return s.players
+    .filter((p) => {
+      const r = s.roles[p.id];
+      if (p.id === holderId || !isEvil(r) || r === "oberon") return false;
+      return r !== "lancelotEvil" || s.config.lancelotEvilKnown !== false;
+    })
+    .map((p) => p.id);
 }
 
 export function ackAssassinationReveal(s: GameState, now = Date.now(), force = false): GameState {

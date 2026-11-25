@@ -242,6 +242,9 @@ These aren't random, and that's correct. They're listed here so nobody "fixes" t
   failing that the blade follows `FLAG_PRIORITY`. It's tied to a role, not a seat, so
   it's exactly as random as the deal.
 - **Rotation direction**: always increasing seat index.
+- **Lancelot allegiance decks**: fixed contents (`LANCELOT_HIDDEN_DECK`,
+  `LANCELOT_KNOWN_DECK`), shuffled with `shuffle` and `secureRandom` at the deal.
+  Randomness decides only the order.
 - **Lady of the Lake start**: the seat before the first leader (their "right", given the
   rotation direction). It's as random as the first leader, no more.
 
@@ -267,6 +270,9 @@ Ordering and timing can leak information even when the random draws are fair. Au
 | Excalibur's original card | Only in the wielder's `excaliburSeen` | Hidden until held, neutral colours. Fine. |
 | Trapped rider | Name on TV and phones | Public by design; the card isn't. Fine. |
 | Trapped card | Only in the leader's `trapsSeen` | Hidden until held, neutral colours. Removed before the shuffle, so the reveal order can't hint at it. Fine. |
+| Lancelot allegiance cards | Known schedule: all five; hidden: each card once flipped | Public under the rules. The hidden deck's unflipped cards never leave the server. Fine. |
+| A Lancelot's current side | His own role chip and quest buttons | Only his view. Everyone's view changes at the same moment when a card flips, so view updates don't single him out. Fine. |
+| Forced Lancelot's mission buttons | Both play his side's card | Same layout and colours as everyone else (§6). Fine. |
 | Good rider's mission buttons | Both play Success; red is labelled SUCCESS | Same layout and colours as Evil (§6). Only the label differs, which needs a look at the screen. Fine. |
 | Game-over cast list | Every role, in seat order | Game is over. Fine. |
 

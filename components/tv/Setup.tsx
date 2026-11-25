@@ -80,8 +80,11 @@ export function TvSetup({
   const { specials } = v.config;
   const on = (r: RoleKey) => specials.includes(r);
 
-  const goodOptions = OPTIONAL_ROLES.filter((r) => !isEvil(r));
-  const evilOptions = OPTIONAL_ROLES.filter(isEvil);
+  const [lancelotPanel, setLancelotPanel] = useState(false);
+  // the two Lancelots share one row (the server keeps them paired)
+  const pair: RoleKey[] = ["lancelotGood", "lancelotEvil"];
+  const goodOptions = OPTIONAL_ROLES.filter((r) => !isEvil(r) && !pair.includes(r));
+  const evilOptions = OPTIONAL_ROLES.filter((r) => isEvil(r) && !pair.includes(r));
   const goodChosen = specials.filter((r) => !isEvil(r)).length;
   const evilChosen = specials.filter(isEvil).length;
   const blade = bladeRole(n, v.config);
@@ -101,17 +104,24 @@ export function TvSetup({
     </span>
   );
 
+  const lancelotOn = on("lancelotGood");
   const roleRow = (r: RoleKey) => {
+    const isPair = r === "lancelotGood";
     const chosen = on(r);
-    // the server keeps the Mistress out while Merlin rests
-    const locked = r === "mistress" && !on("merlin");
+    // the server keeps the Mistress out while Merlin rests, and Guinevere out without the Lancelots
+    const locked = (r === "mistress" && !on("merlin")) || (r === "guinevere" && !lancelotOn);
     // players still join during setup, so an overfull deck is allowed; Begin refuses it
-    const needs = minPlayersFor(chosen ? specials : [...specials, r]);
+    const needs = minPlayersFor(chosen ? specials : [...specials, ...(isPair ? pair : [r])]);
     const short = needs === null || needs > n;
+    const label = isPair ? `${ROLES[r].sigil} Lancelot ×2 · one Good, one Evil` : `${ROLES[r].sigil} ${ROLES[r].name}`;
+    const toggleRow = () =>
+      isPair
+        ? setConfig({ specials: chosen ? specials.filter((x) => !pair.includes(x)) : [...specials, ...pair] })
+        : toggle(r);
     return (
       <div key={r} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ opacity: chosen ? 1 : 0.45 }}>
-          {ROLES[r].sigil} {ROLES[r].name}
+          {label}
           {chosen && blade === r && bladeTag}
           {short && !locked && (
             <span style={{ color: "var(--evil-text)", font: "600 20px var(--font-body)", marginLeft: 10 }}>
@@ -120,7 +130,7 @@ export function TvSetup({
           )}
         </span>
         <button
-          onClick={() => toggle(r)}
+          onClick={toggleRow}
           disabled={locked}
           style={chosen ? { ...goldBtn, letterSpacing: "0.1em", padding: "6px 18px" } : { ...ghostBtn, letterSpacing: "0.1em", padding: "5px 16px", opacity: locked ? 0.5 : 1 }}
         >
@@ -173,6 +183,7 @@ export function TvSetup({
         <div style={{ display: "grid", gap: 14, font: "500 28px var(--font-body)" }}>
           {goodOptions.map(roleRow)}
           {fillRow("Servant", servantCount, "GOOD")}
+          {roleRow("lancelotGood")}
           {evilOptions.map(roleRow)}
           {assassinCard && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -255,8 +266,54 @@ export function TvSetup({
           ))}
         </div>
 
-        {customize ? (
+        {customize && lancelotPanel && lancelotOn ? (
           <div style={{ marginTop: 64, display: "grid", gap: 16, font: "500 24px var(--font-body)" }}>
+            {switchRow(
+              "Allegiance cards",
+              v.config.lancelotSchedule !== "none",
+              v.config.lancelotSchedule === "hidden"
+                ? "HIDDEN · FLIPPED ROUNDS 3–5"
+                : "KNOWN · 5 DEALT FACE UP",
+              "NONE · NO SWITCHES",
+              () => {
+                const order = ["hidden", "known", "none"] as const;
+                const i = order.indexOf(v.config.lancelotSchedule);
+                setConfig({ lancelotSchedule: order[(i + 1) % order.length] });
+              }
+            )}
+            {switchRow(
+              "Quest cards",
+              v.config.lancelotForcedCards,
+              "FORCED BY CURRENT SIDE",
+              "FREE CHOICE",
+              () => setConfig({ lancelotForcedCards: !v.config.lancelotForcedCards })
+            )}
+            {switchRow(
+              "Evil at night",
+              v.config.lancelotEvilKnown,
+              "SEES THE EVIL LANCELOT",
+              "DOESN'T SEE HIM",
+              () => setConfig({ lancelotEvilKnown: !v.config.lancelotEvilKnown })
+            )}
+            {switchRow(
+              "Lancelots at night",
+              v.config.lancelotsMeet,
+              "SEE EACH OTHER",
+              "DON'T MEET",
+              () => setConfig({ lancelotsMeet: !v.config.lancelotsMeet })
+            )}
+            <div style={{ font: "400 20px/1.5 var(--font-body)", color: "var(--parchment-55)" }}>
+              Officially only one variant is used at a time. V1: hidden cards, free choice,
+              Evil sees him. V2: known cards, forced, Evil sees him. V3: Lancelots meet.
+            </div>
+            <button onClick={() => setLancelotPanel(false)} style={{ ...ghostBtn, justifySelf: "start" }}>
+              ‹ BACK
+            </button>
+          </div>
+        ) : customize ? (
+          <div style={{ marginTop: 64, display: "grid", gap: 16, font: "500 24px var(--font-body)" }}>
+            {lancelotOn &&
+              switchRow("Lancelot variants", true, "EDIT ›", "", () => setLancelotPanel(true))}
             {switchRow(
               "Rejection rule",
               true,

@@ -1,7 +1,8 @@
 import type { Allegiance, RoleKey } from "./types";
 
-// single source of truth — trivially recastable (files in public/portraits/)
-export const PORTRAITS: Record<RoleKey, string> = {
+// single source of truth — trivially recastable (files in public/portraits/).
+// null = no portrait yet; Plate and the game-over cast draw the sigil instead.
+export const PORTRAITS: Record<RoleKey, string | null> = {
   merlin: "/portraits/merlin.jpg",
   mistress: "/portraits/mistress.jpg", // Percival, renamed in all copy
   servant: "/portraits/servant.jpg", // shared by every Servant
@@ -9,7 +10,10 @@ export const PORTRAITS: Record<RoleKey, string> = {
   morgana: "/portraits/morgana.jpg", // assassin flag holder at 5–6p
   assassin: "/portraits/assassin.jpg", // separate role, 7+ players
   minion: "/portraits/minion.jpg", // shared
-  oberon: "/portraits/oberon.jpg", // 10 players only
+  oberon: "/portraits/oberon.jpg",
+  lancelotGood: null,
+  lancelotEvil: null,
+  guinevere: null,
 };
 
 export interface RoleInfo {
@@ -109,16 +113,49 @@ export const ROLES: Record<RoleKey, RoleInfo> = {
     shared: false,
     coaching: "You serve Mordred, but no one serves you. Find your kin by their knives.",
   },
+  lancelotGood: {
+    key: "lancelotGood",
+    name: "Lancelot",
+    shortName: "Lancelot",
+    sigil: "⚜",
+    flavor: "First of the knights. For now.",
+    allegiance: "good",
+    shared: false,
+    coaching: "You begin loyal, but your heart may turn. Win with whichever side you stand on at the end.",
+  },
+  lancelotEvil: {
+    key: "lancelotEvil",
+    name: "Lancelot",
+    shortName: "Lancelot",
+    sigil: "⚜",
+    flavor: "First of the knights, and already wavering.",
+    allegiance: "evil",
+    shared: false,
+    coaching: "You begin with Mordred, but your heart may turn. Win with whichever side you stand on at the end.",
+  },
+  guinevere: {
+    key: "guinevere",
+    name: "Guinevere",
+    shortName: "Guinevere",
+    sigil: "♕",
+    flavor: "She knows both Lancelots. Not which is which.",
+    allegiance: "good",
+    shared: false,
+    coaching: "You see both Lancelots but not their hearts. The blade may seek you as surely as Merlin.",
+  },
 };
 
 /** display order for "Roles in Play" and the unmasking */
 export const ROLE_ORDER: RoleKey[] = [
   "merlin",
   "mistress",
+  "guinevere",
+  "lancelotGood",
   "servant",
   "mordred",
   "morgana",
   "assassin",
+  "lancelotEvil",
   "minion",
   "oberon",
 ];

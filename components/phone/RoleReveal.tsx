@@ -59,7 +59,7 @@ export function RoleReveal({
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
         {held ? (
           <>
-            <Plate role={role.key} width={200} showFlavor={false} />
+            <Plate role={role.key} width={200} showFlavor={false} allegiance={role.allegiance} />
             <div
               style={{
                 font: "400 12px/1.5 var(--font-body)",

@@ -101,7 +101,7 @@ export function AssassinationReveal({ v, clockOffset }: { v: TvView; clockOffset
         <div className="flip-card" style={{ width: 300, height: 440 }}>
           <div className={`flip-inner${flipped ? " flipped" : ""}`}>
             <div className="flip-face" style={{ alignItems: "stretch" }}>
-              <Plate role="merlin" width={300} showFlavor={false} />
+              <Plate role={r.markRole ?? "merlin"} width={300} showFlavor={false} />
             </div>
             <div
               className="flip-face flip-back"
@@ -130,8 +130,10 @@ export function AssassinationReveal({ v, clockOffset }: { v: TvView; clockOffset
           }}
         >
           {r.hit
-            ? `◆ ${r.accusedName} was Merlin. The blade lands.`
-            : `◯ Merlin was ${r.merlinName}. The blade misses.`}
+            ? `◆ ${r.accusedName} was ${r.markRole === "guinevere" ? "Guinevere" : "Merlin"}. The blade lands.`
+            : r.guinevereName
+              ? `◯ Merlin was ${r.merlinName}, Guinevere ${r.guinevereName}. The blade misses.`
+              : `◯ Merlin was ${r.merlinName}. The blade misses.`}
         </div>
       )}
     </div>

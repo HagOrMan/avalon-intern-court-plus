@@ -1,4 +1,4 @@
-import type { Config, RoleKey } from "./types";
+import type { AllegianceCard, Config, RoleKey } from "./types";
 
 export const MIN_PLAYERS = 5;
 export const MAX_PLAYERS = 16;
@@ -34,9 +34,14 @@ export function evilCount(playerCount: number): number {
   return Math.ceil(playerCount / 3);
 }
 
-export const GOOD_ROLES: RoleKey[] = ["merlin", "mistress", "servant"];
-export const EVIL_ROLES: RoleKey[] = ["mordred", "morgana", "assassin", "minion", "oberon"];
+export const GOOD_ROLES: RoleKey[] = ["merlin", "mistress", "servant", "lancelotGood", "guinevere"];
+export const EVIL_ROLES: RoleKey[] = ["mordred", "morgana", "assassin", "minion", "oberon", "lancelotEvil"];
 
+/**
+ * A role's *starting* side. Only the Lancelots can change sides mid-game, so anything
+ * that depends on a player's current side (cards, Lady checks, the cast) uses
+ * `allegianceOf` in engine.ts instead. Night knowledge and seat counting use this.
+ */
 export function isEvil(role: RoleKey): boolean {
   return EVIL_ROLES.includes(role);
 }
@@ -44,13 +49,24 @@ export function isEvil(role: RoleKey): boolean {
 /**
  * Roles the host picks into the deck, at any player count. The Assassin isn't here:
  * `bladeRole` decides whether it gets a card. Servants and Minions are fillers.
+ * The Lancelots always come as a pair (`updateConfig` keeps them together), and
+ * Guinevere needs them.
  */
-export const OPTIONAL_ROLES: RoleKey[] = ["merlin", "mistress", "mordred", "morgana", "oberon"];
+export const OPTIONAL_ROLES: RoleKey[] = [
+  "merlin",
+  "mistress",
+  "guinevere",
+  "lancelotGood",
+  "mordred",
+  "morgana",
+  "oberon",
+  "lancelotEvil",
+];
 export const DEFAULT_SPECIALS: RoleKey[] = ["merlin", "mistress", "mordred", "morgana"];
 
 /** Evil roles that can carry the blade as an add-on when no Assassin card fits. */
 export const BLADE_CHOICES: RoleKey[] = ["assassin", "mordred", "morgana", "oberon"];
-/** Who carries the blade when the configured holder can't. */
+/** Who carries the blade when the configured holder can't. Never a Lancelot. */
 export const FLAG_PRIORITY: RoleKey[] = ["morgana", "mordred", "oberon"];
 
 type StoredConfig = Partial<Config> & { disabled?: RoleKey[] };
@@ -71,8 +87,24 @@ export function normalizeConfig(c: StoredConfig): Config {
     ladyOfTheLake: c.ladyOfTheLake === true,
     excalibur: c.excalibur === true,
     trapper: c.trapper === true,
+    lancelotSchedule: c.lancelotSchedule ?? "hidden",
+    lancelotForcedCards: c.lancelotForcedCards === true,
+    lancelotEvilKnown: c.lancelotEvilKnown !== false,
+    lancelotsMeet: c.lancelotsMeet === true,
   };
 }
+
+/** Allegiance decks: hidden flips 3 of 5 (rounds 3–5); known deals 5 of 7 face up (rounds 1–5). */
+export const LANCELOT_HIDDEN_DECK: AllegianceCard[] = ["switch", "switch", "blank", "blank", "blank"];
+export const LANCELOT_KNOWN_DECK: AllegianceCard[] = [
+  "switch",
+  "switch",
+  "blank",
+  "blank",
+  "blank",
+  "blank",
+  "blank",
+];
 
 /** Why `specials` can't be dealt at this player count, or null if it can. */
 export function deckProblem(playerCount: number, specials: RoleKey[]): string | null {

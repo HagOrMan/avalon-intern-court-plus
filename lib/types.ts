@@ -6,7 +6,11 @@ export type RoleKey =
   | "morgana"
   | "assassin"
   | "minion"
-  | "oberon";
+  | "oberon"
+  /** the two Lancelots, named by their starting side; see allegianceOf for the current one */
+  | "lancelotGood"
+  | "lancelotEvil"
+  | "guinevere";
 
 export type Allegiance = "good" | "evil";
 
@@ -68,6 +72,31 @@ export interface Config {
   excalibur: boolean;
   /** Trapper (Hostile Intent): one extra rider; the leader removes and privately sees one card */
   trapper: boolean;
+  /**
+   * Lancelot allegiance switches. "hidden": a face-down 5-card deck (3 blank, 2 switch),
+   * one flipped at the start of rounds 3–5. "known": 5 of a 7-card deck (5 blank, 2 switch)
+   * dealt face up at the start, card k applying at the start of round k.
+   */
+  lancelotSchedule: "none" | "hidden" | "known";
+  /** each Lancelot must play the card of their current side */
+  lancelotForcedCards: boolean;
+  /** Evil sees the starting-Evil Lancelot at night (he still doesn't see them) */
+  lancelotEvilKnown: boolean;
+  /** the two Lancelots see each other at night */
+  lancelotsMeet: boolean;
+}
+
+export type AllegianceCard = "switch" | "blank";
+
+export interface LancelotState {
+  /** true while the Lancelots are on the opposite of their starting sides */
+  switched: boolean;
+  /** hidden schedule: the face-down cards still to flip. Server only. */
+  deck: AllegianceCard[];
+  /** known schedule: public; card k applies at the start of round k + 1 */
+  schedule: AllegianceCard[] | null;
+  /** cards resolved so far; public */
+  flips: { round: number; card: AllegianceCard }[];
 }
 
 /** One mission's Excalibur outcome. `original` is server only, shown to the wielder alone. */
@@ -160,6 +189,8 @@ export interface GameState {
   assassinRevealAt: number | null;
   /** null when the module is off; absent in rooms saved before it existed */
   lady?: LadyState | null;
+  /** null when no Lancelots are dealt; absent in rooms saved before the module existed */
+  lancelot?: LancelotState | null;
   /** the rider the leader armed for the current proposal */
   excaliburHolderId?: string | null;
   excaliburLog?: ExcaliburUse[];

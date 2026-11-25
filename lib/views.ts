@@ -1,5 +1,6 @@
 import type {
   Allegiance,
+  AllegianceCard,
   Config,
   GameState,
   MissionRecord,
@@ -11,7 +12,15 @@ import type {
 } from "./types";
 import { ROLES } from "./roles";
 import { MISSION_SIZES, failsNeeded, isEvil, normalizeConfig } from "./rules";
-import { currentExcalibur, currentTrap, ladyTargets, leader } from "./engine";
+import {
+  allegianceOf,
+  currentExcalibur,
+  currentTrap,
+  isAssassinMark,
+  knownEvilTo,
+  ladyTargets,
+  leader,
+} from "./engine";
 
 const PRESENCE_MS = 15000;
 
@@ -26,6 +35,8 @@ export interface PublicPlayer {
 export interface CastEntry {
   name: string;
   role: RoleKey;
+  /** side at the end of the game: differs from the role's only for a switched Lancelot */
+  allegiance: Allegiance;
 }
 
 interface CommonView {
@@ -43,6 +54,8 @@ interface CommonView {
   rejectionVariant: RejectionVariant;
   /** public table rule; the phone's quest screen depends on it */
   goodMayFail: boolean;
+  /** public table rule: each Lancelot must play their current side's card */
+  lancelotForcedCards: boolean;
   rolesInPlay: RoleKey[];
   proposalIds: string[];
   proposalNames: string[];
@@ -70,6 +83,15 @@ interface CommonView {
   } | null;
   /** this mission's trapped rider; the card itself never appears here */
   trap: { targetId: string; targetName: string } | null;
+  /**
+   * Allegiance cards are public once face up; the hidden deck's unflipped cards and who
+   * the Lancelots are never appear here.
+   */
+  lancelot: {
+    schedule: AllegianceCard[] | null;
+    flips: { round: number; card: AllegianceCard }[];
+    switched: boolean;
+  } | null;
   serverNow: number;
 }
 
@@ -88,7 +110,11 @@ export interface TvView extends CommonView {
   assassinReveal: {
     accusedName: string;
     merlinName: string;
+    /** null when Guinevere isn't dealt */
+    guinevereName: string | null;
     hit: boolean;
+    /** the role the blade found when it hit (Merlin or Guinevere) */
+    markRole: RoleKey | null;
     revealAt: number;
   } | null;
   gameover: { winner: string; winReason: string; cast: CastEntry[]; recap: MissionRecord[] } | null;
@@ -160,6 +186,7 @@ function common(s: GameState, seen: Record<string, number>, now: number): Common
     rejections: s.rejections,
     rejectionVariant: s.config.rejectionVariant,
     goodMayFail: s.config.goodMayFail === true,
+    lancelotForcedCards: s.config.lancelotForcedCards === true,
     rolesInPlay: s.rolesInPlay,
     proposalIds: s.proposal,
     proposalNames: s.proposal.map(idToName),
@@ -197,12 +224,15 @@ function common(s: GameState, seen: Record<string, number>, now: number): Common
       const t = ["trapReveal", "questReveal"].includes(s.phase) ? currentTrap(s) : null;
       return t ? { targetId: t.targetId, targetName: idToName(t.targetId) } : null;
     })(),
+    lancelot: s.lancelot
+      ? { schedule: s.lancelot.schedule, flips: s.lancelot.flips, switched: s.lancelot.switched }
+      : null,
     serverNow: now,
   };
 }
 
 function castList(s: GameState): CastEntry[] {
-  return s.players.map((p) => ({ name: p.name, role: s.roles[p.id] }));
+  return s.players.map((p) => ({ name: p.name, role: s.roles[p.id], allegiance: allegianceOf(s, p.id) }));
 }
 
 export function tvView(s: GameState, seen: Record<string, number>, now = Date.now()): TvView {
@@ -238,7 +268,9 @@ export function tvView(s: GameState, seen: Record<string, number>, now = Date.no
             accusedName: idToName(s.assassinTargetId),
             merlinName:
               s.players.find((p) => s.roles[p.id] === "merlin")?.name ?? "no one",
-            hit: s.roles[s.assassinTargetId] === "merlin",
+            guinevereName: s.players.find((p) => s.roles[p.id] === "guinevere")?.name ?? null,
+            hit: isAssassinMark(s.roles[s.assassinTargetId]),
+            markRole: isAssassinMark(s.roles[s.assassinTargetId]) ? s.roles[s.assassinTargetId] : null,
             revealAt: s.assassinRevealAt!,
           }
         : null,
@@ -293,11 +325,37 @@ function knowledgeFor(s: GameState, playerId: string): Knowledge | null {
       note: "No one. You are evil, alone, and unlisted among your own.",
     };
   }
+  const lancelot = (r: RoleKey) => r === "lancelotGood" || r === "lancelotEvil";
+  if (role === "guinevere") {
+    // alphabetical so the order says nothing about which side is which
+    return {
+      label: "THE TWO LANCELOTS:",
+      names: namesOf(lancelot).sort((a, b) => a.localeCompare(b)),
+      note: "(one began loyal, one began with Mordred; hearts may turn)",
+    };
+  }
+  if (lancelot(role)) {
+    // the Evil Lancelot never sees Evil; the pair see each other only in that variant
+    const meet = s.config.lancelotsMeet === true;
+    return {
+      label: "KNOWN TO YOU:",
+      names: meet ? namesOf(lancelot) : [],
+      note: meet ? "(your counterpart Lancelot)" : "No one. Your heart is your own.",
+    };
+  }
   if (isEvil(role)) {
+    const evilLancelotSeen = s.config.lancelotEvilKnown !== false;
+    const unseen = (["oberon", "lancelotEvil"] as RoleKey[]).filter(
+      (r) => inPlay(r) && (r === "oberon" || !evilLancelotSeen)
+    );
     return {
       label: "YOUR KIN IN SHADOW:",
-      names: namesOf((r) => isEvil(r) && r !== "oberon"),
-      note: inPlay("oberon") ? "(Oberon walks unseen, even by you)" : null,
+      names: namesOf(
+        (r) => isEvil(r) && r !== "oberon" && (r !== "lancelotEvil" || evilLancelotSeen)
+      ),
+      note: unseen.length
+        ? `(${unseen.map((r) => (r === "oberon" ? "Oberon" : "the Evil Lancelot")).join(" and ")} ${unseen.length > 1 ? "walk" : "walks"} unseen, even by you)`
+        : null,
     };
   }
   return null;
@@ -330,7 +388,7 @@ export function playerView(
             key: role,
             name: info.name,
             sigil: info.sigil,
-            allegiance: info.allegiance,
+            allegiance: allegianceOf(s, playerId),
             flavor: info.flavor,
             coaching: info.coaching,
             knowledge: knowledgeFor(s, playerId),
@@ -355,13 +413,7 @@ export function playerView(
         ? {
             choosing: true,
             targets: s.players
-              .filter((p) => {
-                if (p.id === playerId) return false;
-                const r = s.roles[p.id];
-                const holderRole = s.roles[playerId];
-                const known = isEvil(r) && r !== "oberon" && holderRole !== "oberon";
-                return !known;
-              })
+              .filter((p) => p.id !== playerId && !knownEvilTo(s, playerId).includes(p.id))
               .map((p) => ({ id: p.id, name: p.name })),
           }
         : null,

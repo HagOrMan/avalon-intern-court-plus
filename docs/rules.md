@@ -107,8 +107,8 @@ player. If that player is Merlin, Evil wins. Otherwise Good wins.
 
 ## 2. Variants and modules
 
-Built so far: the Wraith, Lady of the Lake, Excalibur and Trapper (all settings, §3).
-Planned: Lancelot + Guinevere, discussion timers, Targeting and the Plot cards. Section 5
+Built so far: the Wraith, Lady of the Lake, Excalibur, Trapper, and Lancelot +
+Guinevere (all settings, §3). Planned: discussion timers, Targeting and the Plot cards. Section 5
 lists what each needs, with the decisions already made.
 
 **Order within a quest**, when several modules apply:
@@ -271,6 +271,28 @@ app follows the official text.
 - Lancelots sit within the normal seat limits. Each role row says how many players the
   deck needs, and the game refuses to begin if too few have joined.
 
+**In the app** (built):
+
+- **Setup:**
+  - "Lancelot ×2" is one row that adds or removes both cards. Guinevere is locked until
+    it's on.
+  - When Lancelot is on, Customize shows a "Lancelot variants" row that opens the four
+    switches, with the "officially only one at a time" note.
+  - Defaults are Variant 1: hidden cards, free choice, Evil sees him, and the Lancelots
+    don't meet.
+- **The TV** shows the allegiance cards top-left: five face up for a known schedule, or
+  three face down for rounds 3–5 that flip as drawn. It also shows SWITCHED while the
+  Lancelots are on their opposite sides.
+- **A Lancelot's phone** shows his *current* side on the role chip and the game-over
+  plate.
+- **Forced cards:** a forced Lancelot still sees two buttons, and both play his side's
+  card.
+- **Assassination:** the blade can't name the Evil Lancelot when Evil saw him at night.
+  Naming Guinevere wins like naming Merlin.
+- **Portraits:** Lancelot and Guinevere have none yet. Their plates show their sigils
+  (⚜, ♕) until portraits are added to `public/portraits/` and `PORTRAITS` in
+  `lib/roles.ts`.
+
 ### 2.5 Guinevere (online platform; needs Lancelot)
 
 Guinevere is Good. She knows which two players are the Lancelots, but not their sides.
@@ -343,25 +365,31 @@ Planned as a setting. These are the full official rules.
 
 **The cards**
 
-| Card | Type | Effect |
-|---|---|---|
-| Overheard Conversation | ★ | The player the leader gives it to must look at the Loyalty card of **one adjacent player**. |
-| Opinion Maker | ⛨ | The holder must choose and reveal their vote **before** anyone else picks theirs, for the rest of the game. If two are in play, those two reveal at the same time. |
-| Establish Confidence | ★ | The **leader** must show their Loyalty card to any other player. |
-| Open Up | ★ | The player given it must show their Loyalty card to any other player, the leader included. |
-| No Confidence | ⚔ | Rejects an **approved** team. Using it counts as a failed vote. |
-| Keeping a Close Eye on You | ⚔ | Look at one played Quest card. It needn't be announced before cards are played, and doesn't change the card. Several cards can be checked in one round, but no player's card can be checked by more than one player in a round. |
-| Strong Leader | ⚔ | Become the leader. It must be declared before the leader acts (drawing Plot cards or handing out team tokens). After one is played, another can't be played until a vote has been taken. |
-| In the Spotlight | ⚔ | Force one player to play their Quest card **face up**. It must be declared, with the target, before any rider picks a card. |
-| Take Responsibility | ★ | The player given it must take one Plot card from any other player. |
+| Card | × | Type | Effect |
+|---|---|---|---|
+| No Confidence | 3 | ⚔ | Cancels an **approved** team and forces a change of leader. Using it counts as a failed vote. |
+| Keeping a Close Eye on You | 2 | ⚔ | Look at one played Quest card. It needn't be announced before cards are played, and doesn't change the card. Several cards can be checked in one round, but no player's card can be checked by more than one player in a round. |
+| Strong Leader | 2 | ⚔ | Become the leader. It must be declared before the leader acts (drawing Plot cards or handing out team cards). After one is played, another can't be played until a vote has been taken. |
+| Overheard Conversation | 2 | ★ | The player the leader gives it to must look at the card of **one adjacent player** (immediate left or right). They pick the neighbour publicly; the result is private. |
+| Opinion Maker | 2 | ⛨ | The holder must choose and reveal their vote **first, publicly**, for the rest of the game. If two are in play, those two reveal at the same time. |
+| Establish Confidence | 1 | ★ | The **leader** must show their card to a player of their choice. |
+| Open Up | 1 | ★ | The player given it must show their card to one player of their choice, the leader included. |
+| In the Spotlight | 1 | ⚔ | Force another player to play their Quest card **face up**. It must be declared, with the target, before any rider picks a card. |
+| Take Responsibility | 1 | ⚔ | The player given it **must** take one Plot card from any other player. Listed as one-time use, not use-immediately. |
+
+The counts total 15. In Avalon, "show their card" means the matching **Loyalty** card,
+never the character card (see above). The online text calls them "Mission cards"; they
+are the Quest cards here.
+
+**Not compatible with Trapper.** Plot cards and Trapper can't both be on; Setup will
+enforce this when Plot cards are built.
 
 **Interactions**
 - Excalibur resolves before "Keeping a Close Eye on You".
 - Excalibur can't switch a card played face up because of "In the Spotlight".
 
-**Card counts.** The text above names 9 distinct cards for a 15-card deck. The rulebook
-excerpt doesn't give the copies of each, or which 7 are marked for 5–6 players. That
-comes from the physical cards, and it's needed before this is built (§5).
+**Still unknown:** which 7 cards are marked for 5–6 players. That's printed on the
+physical cards, and it's needed before this is built (§5).
 
 ---
 
@@ -384,6 +412,7 @@ comes from the physical cards, and it's needed before this is built (§5).
 | Lady of the Lake | `ladyExamine`, `ladyPass`, `closeMission`; `components/phone/Lady.tsx` | Yes, when on (§2.2) |
 | Excalibur | `propose`, `wieldExcalibur`, `excaliburDone`; `components/phone/Sword.tsx` | Yes, when on (§2.3) |
 | Trapper | `teamSize`, `trapCard`, `trapDone`, `revealQuest`; `components/phone/Sword.tsx` | Yes, when on (§2.6) |
+| Lancelot | `allegianceOf`, `startRound`, `knowledgeFor`, `knownEvilTo` | Yes, per the chosen switches (§2.4) |
 
 ### Role names
 
@@ -461,7 +490,9 @@ also refuses a Fail from Good.
 | D8 | **Assassination can be turned off** | Always on when Merlin and the Assassin are in play | A setting | `config.assassination` |
 | D9 | **Assassin can't target known Evil** | Nothing stops it; it would just be a wasted guess | The engine refuses known-Evil targets. Oberon is targetable unless he holds the blade himself, in which case he can target anyone | `assassinate`; `playerView.assassin` |
 | D10 | **First leader carries over between games** | Random every game | Rotation continues from the previous game if the table is unchanged | `nextLeader`, `docs/fairness.md` §3 |
-| D11 | **Modules missing** | Lancelot, Targeting, Plot cards | Not implemented yet (§5). Trapper, which is built, comes from *Hostile Intent*, not Avalon | §5 |
+| D11 | **Modules missing** | Targeting, Plot cards | Not implemented yet (§5). Trapper, which is built, comes from *Hostile Intent*, not Avalon | §5 |
+| D13 | **Lancelot variants combine** | One variant at a time | Four independent switches; Setup notes the official rule | `config.lancelot*` |
+| D14 | **Guinevere** | Not in the board game (online platform role) | Good; sees both Lancelots; a second assassination mark | `knowledgeFor`, `isAssassinMark` |
 | D12 | **Lady after a forfeited quest** | A quest is lost to rejections only under the "quest fails" house rule | A forfeited quest counts as resolved, so the Lady check still follows it | `closeMission` |
 
 ---
@@ -512,10 +543,11 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 - UI: a quest picker on the leader's phone, and the chosen quest ringed on the TV.
 
 **Plot cards**
-- Needs from you, before building: how many copies of each card make up the 15, and
-  which 7 are marked for 5–6 players. The rules only give the draw count up to 10
-  players (1/2/3), so 11–16 needs a house number. Extending 9–10's 3, or using 4 at
-  13+, are the obvious options.
+- Needs from you, before building: which 7 cards are marked for 5–6 players. The rules
+  only give the draw count up to 10 players (1/2/3), so 11–16 needs a house number.
+  Extending 9–10's 3, or using 4 at 13+, are the obvious options.
+- Setup must refuse Plot cards and Trapper together (either toggle switches the other
+  off, and `updateConfig` refuses the pair).
 - This is the largest module after Lancelot. It adds public hands of cards, responses
   that can interrupt (No Confidence after a vote, Strong Leader before a proposal), a
   vote pre-reveal (Opinion Maker), a face-up quest card (In the Spotlight), and private
@@ -523,11 +555,14 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 - Each card's timing window needs a step where holders are asked in turn, in seat
   order from the leader, as the rules require.
 
-**Lancelot (+ Guinevere)**
-- This is the most invasive module. `isEvil(role)` is used everywhere and assumes a
-  role's side never changes. It needs a state-aware `allegianceOf(s, playerId)` for win
-  checks, card enforcement, assassination targets, Lady checks, views and the
-  game-over cast.
+**Lancelot (+ Guinevere): built.**
+- `isEvil(role)` is a role's *starting* side: seat counting and night sight use it.
+  `allegianceOf(s, playerId)` in `engine.ts` is the *current* side: quest-card rules,
+  Lady checks, the player's own role chip and the game-over cast use it.
+- `startRound` resolves the round's allegiance card. `playerReady` calls it for round 1,
+  and `closeMission` calls it before the Lady's turn.
+- `knownEvilTo` is the single source for who the blade holder saw at night, and the
+  engine and the phone's target list both use it.
 - Roles: `lancelotGood` and `lancelotEvil` (starting sides), taking one Good and one Evil
   seat inside the normal limits. Excluded from `FLAG_PRIORITY`: a Lancelot never carries
   the blade.

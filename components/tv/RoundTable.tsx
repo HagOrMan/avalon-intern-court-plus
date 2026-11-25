@@ -90,6 +90,53 @@ export function QuestTrack({ v }: { v: TvView }) {
   );
 }
 
+/**
+ * Lancelot's allegiance cards, top-left: a known schedule shows all five face up; hidden
+ * draws show rounds 3–5 face down until flipped. ⇄ = switch, — = no change.
+ */
+export function AllegianceTrack({ v }: { v: TvView }) {
+  const l = v.lancelot;
+  if (!l || (!l.schedule && v.config.lancelotSchedule !== "hidden")) return null;
+  const rounds = l.schedule ? [1, 2, 3, 4, 5] : [3, 4, 5];
+  return (
+    <div style={{ position: "absolute", top: 52, left: 80, display: "flex", gap: 10, alignItems: "center" }}>
+      <span style={{ font: "600 18px var(--font-body)", letterSpacing: "0.1em", color: "rgba(237,230,214,0.5)", marginRight: 6 }}>
+        ⚜ LANCELOT
+      </span>
+      {rounds.map((round) => {
+        const flip = l.flips.find((f) => f.round === round);
+        const card = l.schedule ? l.schedule[round - 1] : flip?.card;
+        const resolved = !!flip;
+        return (
+          <div
+            key={round}
+            title={`Round ${round}`}
+            style={{
+              width: 40,
+              height: 54,
+              border: `1px solid ${resolved ? "var(--gold)" : "rgba(201,162,75,0.4)"}`,
+              background: resolved ? "rgba(201,162,75,0.15)" : "linear-gradient(135deg, #191d33, #10131f)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              font: "700 22px var(--font-body)",
+              color: card === "switch" ? "var(--gold)" : "rgba(237,230,214,0.55)",
+              opacity: resolved || l.schedule ? 1 : 0.7,
+            }}
+          >
+            {card ? (card === "switch" ? "⇄" : "—") : "?"}
+          </div>
+        );
+      })}
+      {l.switched && (
+        <span style={{ font: "600 18px var(--font-body)", letterSpacing: "0.08em", color: "var(--gold)", marginLeft: 6 }}>
+          SWITCHED
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** Five candles top-right; one snuffs per rejected proposal. */
 export function Candles({ v }: { v: TvView }) {
   return (
@@ -230,6 +277,7 @@ export function RoundTable({ v }: { v: TvView }) {
     <div style={{ position: "absolute", inset: 0 }}>
       <QuestTrack v={v} />
       <Candles v={v} />
+      <AllegianceTrack v={v} />
       <div
         style={{
           position: "absolute",

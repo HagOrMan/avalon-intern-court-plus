@@ -94,9 +94,14 @@ export function QuestScreen({
   const cast = v.myCard ?? castLocal;
   // so onlookers can't read the card from whether a thumb went high or low
   const [failOnTop] = useState(() => secureRandom() < 0.5);
-  // Good still gets two buttons, so a loyal rider's screen and thumb look like an Evil
-  // rider's; the red one plays Success too. See docs/fairness.md §6.
-  const loyal = v.role?.allegiance === "good" && !v.goodMayFail;
+  // Anyone whose card is forced still gets two buttons, so their screen and thumb look
+  // like a free rider's: a loyal rider's red button plays Success, a forced Evil
+  // Lancelot's green one plays Fail. See docs/fairness.md §6.
+  const forcedLancelot =
+    v.lancelotForcedCards && (v.role?.key === "lancelotGood" || v.role?.key === "lancelotEvil");
+  const evilNow = v.role?.allegiance === "evil";
+  const loyal = !evilNow && (forcedLancelot || !v.goodMayFail);
+  const mustFail = evilNow && forcedLancelot;
 
   const play = async (card: "success" | "fail") => {
     setCastLocal(card);
@@ -140,9 +145,9 @@ export function QuestScreen({
           gap: 14,
         }}
       >
-        <button className="vote-btn approve" onClick={() => play("success")}>
+        <button className="vote-btn approve" onClick={() => play(mustFail ? "fail" : "success")}>
           <span style={{ fontSize: 34 }}>◯</span>
-          <span>SUCCESS</span>
+          <span>{mustFail ? "FAIL" : "SUCCESS"}</span>
         </button>
         <button className="vote-btn reject" onClick={() => play(loyal ? "success" : "fail")}>
           <span style={{ fontSize: 30 }}>◆</span>

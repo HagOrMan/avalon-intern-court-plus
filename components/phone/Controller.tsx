@@ -70,7 +70,7 @@ function RolePeek({ v }: { v: PlayerView }) {
           className="pause-overlay"
           style={{ background: "rgba(11,13,24,0.95)", gap: 14, padding: 24 }}
         >
-          <Plate role={role.key} width={180} showFlavor={false} />
+          <Plate role={role.key} width={180} showFlavor={false} allegiance={role.allegiance} />
           {role.knowledge && (
             <div style={{ width: "100%", maxWidth: 320 }}>
               <KnowledgeBox knowledge={role.knowledge} />
@@ -350,7 +350,7 @@ export function Controller({
             <div style={{ font: "400 13px var(--font-body)", color: "var(--parchment-75)", maxWidth: 300 }}>
               {g.winReason}
             </div>
-            {v.role && <Plate role={v.role.key} width={180} showFlavor={false} />}
+            {v.role && <Plate role={v.role.key} width={180} showFlavor={false} allegiance={v.role.allegiance} />}
             <div style={{ font: "400 12px var(--font-body)", color: "var(--parchment-55)" }}>
               The full unmasking is on the TV. The Game Master can call another game.
             </div>

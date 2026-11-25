@@ -21,7 +21,7 @@ export function AssassinScreen({
         className="serif"
         style={{ font: "700 28px var(--font-serif)", color: "var(--gold)", textAlign: "center" }}
       >
-        Name Merlin
+        {v.rolesInPlay.includes("guinevere") ? "Name Merlin or Guinevere" : "Name Merlin"}
       </div>
       <div
         style={{

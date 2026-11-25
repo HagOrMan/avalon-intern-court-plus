@@ -41,7 +41,8 @@ function assert(cond, msg) {
   console.log("  ok:", msg);
 }
 
-const EVIL = ["mordred", "morgana", "assassin", "minion", "oberon"];
+// starting sides; a Lancelot's current side comes from his own view
+const EVIL = ["mordred", "morgana", "assassin", "minion", "oberon", "lancelotEvil"];
 
 const { code, hostToken } = await post("/api/rooms");
 console.log("room", code);
@@ -328,6 +329,67 @@ roleOf = await dealAndSwearIn();
       tv.questReveal.fails === expectedFails,
     "the trapped card is left out and the switched card counts"
   );
+}
+
+/* ---- game 4: Lancelots (known schedule, forced cards) and Guinevere ---- */
+await act(hostToken, "restart");
+await act(hostToken, "updateConfig", {
+  config: {
+    assassination: true,
+    excalibur: false,
+    trapper: false,
+    specials: ["merlin", "lancelotEvil", "guinevere"], // one Lancelot pulls in his pair
+    lancelotSchedule: "known",
+    lancelotForcedCards: true,
+  },
+});
+tv = await readView(code, hostToken);
+assert(
+  ["merlin", "lancelotGood", "lancelotEvil", "guinevere"].every((r) => tv.config.specials.includes(r)),
+  "Lancelots come as a pair"
+);
+roleOf = await dealAndSwearIn();
+{
+  tv = await readView(code, hostToken);
+  assert(tv.lancelot.schedule.length === 5, "five allegiance cards dealt face up");
+  const byRole = (r) => players.find((p) => roleOf[p.playerId] === r);
+  const good = byRole("lancelotGood");
+  const evil = byRole("lancelotEvil");
+  const view = async (p) => readView(code, p.token);
+
+  const gv = await view(byRole("guinevere"));
+  assert(
+    JSON.stringify(gv.role.knowledge.names) === JSON.stringify([good.name, evil.name].sort((a, b) => a.localeCompare(b))),
+    "Guinevere sees both Lancelots"
+  );
+  const av = await view(byRole("assassin"));
+  assert(av.role.knowledge.names.includes(evil.name), "Evil sees the Evil Lancelot");
+  const ev = await view(evil);
+  assert(ev.role.knowledge.names.length === 0, "the Evil Lancelot sees no one");
+  const mv = await view(byRole("merlin"));
+  assert(mv.role.knowledge.names.includes(evil.name), "Merlin sees the starting Evil Lancelot");
+
+  const goodNow = (await view(good)).role.allegiance;
+  assert(goodNow === (tv.lancelot.switched ? "evil" : "good"), "round-1 card sets the Lancelots' sides");
+  const nowEvil = goodNow === "evil" ? good : evil;
+  const nowGood = nowEvil === good ? evil : good;
+
+  const leaderTok = players.find((p) => p.playerId === tv.leaderId).token;
+  await act(leaderTok, "propose", { team: [good.playerId, evil.playerId] });
+  for (const p of players) await act(p.token, "vote", { vote: "approve" });
+  await sleep(6100);
+  await act(hostToken, "ack");
+
+  let refused = false;
+  try { await act(nowEvil.token, "questCard", { card: "success" }); } catch { refused = true; }
+  assert(refused, "a forced Evil Lancelot can't play Success");
+  refused = false;
+  try { await act(nowGood.token, "questCard", { card: "fail" }); } catch { refused = true; }
+  assert(refused, "a forced Good Lancelot can't play Fail");
+  await act(nowEvil.token, "questCard", { card: "fail" });
+  await act(nowGood.token, "questCard", { card: "success" });
+  tv = await readView(code, hostToken);
+  assert(tv.phase === "questReveal" && tv.questReveal.fails === 1, "forced cards counted");
 }
 
 console.log("\nALL PASSED");

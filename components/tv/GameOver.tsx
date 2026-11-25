@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { TvView } from "@/lib/views";
 import { ROLES, PORTRAITS } from "@/lib/roles";
 import { LQIP } from "@/lib/lqip";
+import { SigilTile } from "@/components/Plate";
 
 /** TV-7 · every name finally paired with its plate, all flipping at once. */
 export function GameOver({
@@ -69,26 +70,31 @@ export function GameOver({
           gap,
         }}
       >
-        {g.cast.map(({ name, role }) => {
+        {g.cast.map(({ name, role, allegiance }) => {
           const info = ROLES[role];
-          const evil = info.allegiance === "evil";
+          const evil = allegiance === "evil";
+          const portrait = PORTRAITS[role];
           return (
             <div key={name} style={{ width: w, textAlign: "center" }}>
               <div className="flip-card" style={{ width: w * 0.78, height: w * 0.78, margin: "0 auto" }}>
                 <div className={`flip-inner${flipped ? " flipped" : ""}`}>
                   <div className="flip-face">
-                    <img
-                      src={PORTRAITS[role]}
-                      alt={info.name}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        border: "1px solid rgba(201,162,75,0.6)",
-                        backgroundImage: `url(${LQIP[role]})`,
-                        backgroundSize: "cover",
-                      }}
-                    />
+                    {portrait ? (
+                      <img
+                        src={portrait}
+                        alt={info.name}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          border: "1px solid rgba(201,162,75,0.6)",
+                          backgroundImage: `url(${LQIP[role]})`,
+                          backgroundSize: "cover",
+                        }}
+                      />
+                    ) : (
+                      <SigilTile role={role} style={{ width: "100%", height: "100%", fontSize: w * 0.2 }} />
+                    )}
                   </div>
                   <div
                     className="flip-face flip-back"
