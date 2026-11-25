@@ -5,6 +5,8 @@ import type {
   GameState,
   MissionRecord,
   Phase,
+  PlotCardKey,
+  PlotWindowKind,
   QuestCard,
   RejectionVariant,
   RoleKey,
@@ -15,6 +17,9 @@ import { MISSION_SIZES, failsNeeded, isEvil, normalizeConfig } from "./rules";
 import {
   allegianceOf,
   availableQuests,
+  chargeHolders,
+  neighboursOf,
+  takeableCards,
   currentExcalibur,
   currentQuest,
   currentTrap,
@@ -109,6 +114,23 @@ interface CommonView {
   } | null;
   /** the current decision's countdown (server time); `forced` = random choices at zero */
   timer: { endsAt: number; forced: boolean } | null;
+  /**
+   * Plot cards are public once drawn: hands, Charges, who is being asked, who played what
+   * on whom. The face-down deck and every private result stay out.
+   */
+  plot: {
+    deckCount: number;
+    drawn: { id: string; key: PlotCardKey }[];
+    hands: { playerId: string; cards: { id: string; key: PlotCardKey }[] }[];
+    charges: string[];
+    window: { kind: PlotWindowKind; askingId: string; askingName: string } | null;
+    pending: { key: PlotCardKey; actorId: string; actorName: string; holderName: string } | null;
+    /** riders playing face up this quest; their card shows once played */
+    spotlit: { playerId: string; name: string; card: QuestCard | null }[];
+    /** Charge holders' votes, public once all of them have voted */
+    chargeVotes: { playerId: string; name: string; vote: Vote }[] | null;
+    lastEvent: { key: PlotCardKey; kind: "given" | "used"; byName: string; targetName: string | null } | null;
+  } | null;
   serverNow: number;
 }
 
@@ -174,6 +196,19 @@ export interface PlayerView extends CommonView {
   excaliburSeen: { mission: number; targetName: string; original: QuestCard }[];
   /** cards this player trapped as leader; only their view carries these */
   trapsSeen: { mission: number; targetName: string; card: QuestCard }[];
+  /** private results from Plot cards that only this player saw (a loyalty or a quest card) */
+  plotSeen: { round: number; via: PlotCardKey; subjectName: string; loyalty: Allegiance | null; card: QuestCard | null }[];
+  /** the Plot decision this player owes right now, if any */
+  plotTurn: {
+    kind: "deal" | "resolve" | "window";
+    key?: PlotCardKey;
+    /** deal: the drawn cards to hand out */
+    cards?: { id: string; key: PlotCardKey }[];
+    /** players (or riders) this player may choose */
+    targets: { id: string; name: string }[];
+    /** Restore Your Honor: other players' held cards */
+    takeable: { playerId: string; name: string; cardId: string; key: PlotCardKey }[];
+  } | null;
   gameover: { winner: string; winReason: string; myRole: RoleKey; cast: CastEntry[] } | null;
   paused: boolean;
 }
@@ -253,8 +288,93 @@ function common(s: GameState, seen: Record<string, number>, now: number): Common
       const endsAt = timerEndsAt(s);
       return endsAt === null ? null : { endsAt, forced: s.config.timerForce === true };
     })(),
+    plot: plotPublic(s, idToName),
     serverNow: now,
   };
+}
+
+function plotPublic(s: GameState, idToName: (id: string) => string): CommonView["plot"] {
+  const p = s.plot;
+  if (!p) return null;
+  const charges = chargeHolders(s);
+  const chargesVoted = s.phase === "voting" && charges.length > 0 && charges.every((id) => id in s.votes);
+  const last = p.events[p.events.length - 1];
+  const inQuest = ["quest", "plotWindow", "excalibur", "excaliburReveal", "questReveal"].includes(s.phase);
+  return {
+    deckCount: p.deck.length,
+    drawn: p.drawn.map((c) => ({ id: c.id, key: c.key })),
+    hands: s.players
+      .filter((pl) => (p.hands[pl.id] ?? []).length)
+      .map((pl) => ({ playerId: pl.id, cards: p.hands[pl.id].map((c) => ({ id: c.id, key: c.key })) })),
+    charges,
+    window:
+      s.phase === "plotWindow" && p.window
+        ? { kind: p.window.kind, askingId: p.window.queue[0], askingName: idToName(p.window.queue[0]) }
+        : null,
+    pending:
+      s.phase === "plotResolve" && p.pending.length
+        ? {
+            key: p.pending[0].card.key,
+            actorId: p.pending[0].actorId,
+            actorName: idToName(p.pending[0].actorId),
+            holderName: idToName(p.pending[0].holderId),
+          }
+        : null,
+    spotlit: inQuest
+      ? p.spotlit.map((id) => ({ playerId: id, name: idToName(id), card: s.questCards[id] ?? null }))
+      : [],
+    chargeVotes: chargesVoted
+      ? charges.map((id) => ({ playerId: id, name: idToName(id), vote: s.votes[id] }))
+      : null,
+    lastEvent: last
+      ? {
+          key: last.key,
+          kind: last.kind,
+          byName: idToName(last.byId),
+          targetName: last.targetId ? idToName(last.targetId) : null,
+        }
+      : null,
+  };
+}
+
+/** What this player must decide in a Plot step right now, if anything. */
+function plotTurnFor(s: GameState, playerId: string): PlayerView["plotTurn"] {
+  const p = s.plot;
+  if (!p) return null;
+  const nameOf = (id: string) => s.players.find((x) => x.id === id)?.name ?? "?";
+  const others = s.players.filter((x) => x.id !== playerId).map((x) => ({ id: x.id, name: x.name }));
+  if (s.phase === "plotDeal" && leader(s).id === playerId) {
+    return { kind: "deal", cards: p.drawn.map((c) => ({ id: c.id, key: c.key })), targets: others, takeable: [] };
+  }
+  if (s.phase === "plotResolve" && p.pending[0]?.actorId === playerId) {
+    const key = p.pending[0].card.key;
+    if (key === "restoreHonor") {
+      const takeable = takeableCards(s, playerId).map((t) => ({
+        playerId: t.playerId,
+        name: nameOf(t.playerId),
+        cardId: t.card.id,
+        key: t.card.key,
+      }));
+      return { kind: "resolve", key, targets: [], takeable };
+    }
+    const targets =
+      key === "areYouTheOne"
+        ? neighboursOf(s, playerId).map((id) => ({ id, name: nameOf(id) }))
+        : others;
+    return { kind: "resolve", key, targets, takeable: [] };
+  }
+  if (s.phase === "plotWindow" && p.window?.queue[0] === playerId) {
+    const kind = p.window.kind;
+    const riders = s.proposal.map((id) => ({ id, name: nameOf(id) }));
+    const targets =
+      kind === "weFoundYou"
+        ? riders.filter((r) => r.id !== playerId && !p.spotlit.includes(r.id))
+        : kind === "ambush"
+          ? riders.filter((r) => !p.ambushed.includes(r.id))
+          : [];
+    return { kind: "window", key: kind, targets, takeable: [] };
+  }
+  return null;
 }
 
 function castList(s: GameState): CastEntry[] {
@@ -452,11 +572,21 @@ export function playerView(
     excaliburTargets:
       s.phase === "excalibur" && s.excaliburHolderId === playerId
         ? s.proposal
-            .filter((id) => id !== playerId)
+            .filter((id) => id !== playerId && !s.plot?.spotlit.includes(id))
             .map((id) => s.players.find((p) => p.id === id)!)
             .sort((a, b) => a.seat - b.seat)
             .map((p) => ({ id: p.id, name: p.name }))
         : null,
+    plotSeen: (s.plot?.secrets ?? [])
+      .filter((x) => x.viewerId === playerId)
+      .map((x) => ({
+        round: x.round,
+        via: x.via,
+        subjectName: s.players.find((p) => p.id === x.subjectId)?.name ?? "?",
+        loyalty: x.loyalty,
+        card: x.card,
+      })),
+    plotTurn: plotTurnFor(s, playerId),
     excaliburSeen: (s.excaliburLog ?? [])
       .filter((e) => e.holderId === playerId && e.targetId && e.original)
       .map((e) => ({

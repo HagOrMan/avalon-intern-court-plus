@@ -14,6 +14,10 @@ export function VoteScreen({
   // optimistic: stamp immediately, server reconciles
   const [castLocal, setCastLocal] = useState<"approve" | "reject" | null>(null);
   const cast = v.myVote ?? castLocal;
+  // Charge: its holders vote first and face up; everyone else waits for them
+  const charges = v.plot?.charges ?? [];
+  const iCharge = charges.includes(v.me.id);
+  const waitingOnCharge = !iCharge && charges.some((id) => !v.votedIds.includes(id));
 
   const voteFor = async (vote: "approve" | "reject") => {
     setCastLocal(vote);
@@ -51,8 +55,29 @@ export function VoteScreen({
     );
   }
 
+  if (waitingOnCharge) {
+    return (
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, textAlign: "center" }}>
+        <div className="serif" style={{ font: "600 22px var(--font-serif)" }}>The Charge votes first</div>
+        <div style={{ font: "400 13px var(--font-body)", color: "var(--parchment-55)", maxWidth: 260 }}>
+          Their vote{charges.length > 1 ? "s are" : " is"} shown on the TV before anyone else votes.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14, paddingTop: 14 }}>
+      {iCharge && (
+        <div style={{ font: "600 11px var(--font-body)", letterSpacing: "0.12em", color: "var(--gold)", textAlign: "center" }}>
+          ⛨ CHARGE · YOU VOTE FIRST, FACE UP
+        </div>
+      )}
+      {(v.plot?.chargeVotes ?? []).map((c) => (
+        <div key={c.playerId} style={{ font: "500 13px var(--font-body)", color: "var(--parchment-75)", textAlign: "center" }}>
+          ⛨ {c.name} voted {c.vote === "approve" ? "◯ Approve" : "◆ Reject"}
+        </div>
+      ))}
       <div
         className="serif"
         style={{ font: "600 20px var(--font-serif)", textAlign: "center", lineHeight: 1.35 }}
@@ -137,6 +162,11 @@ export function QuestScreen({
       <div className="serif" style={{ font: "600 24px var(--font-serif)", textAlign: "center" }}>
         You ride for Mission {v.mission + 1}
       </div>
+      {v.plot?.spotlit.some((x) => x.playerId === v.me.id) && (
+        <div style={{ font: "600 11px var(--font-body)", letterSpacing: "0.12em", color: "var(--gold)", textAlign: "center" }}>
+          WE FOUND YOU · YOUR CARD IS PLAYED FACE UP
+        </div>
+      )}
       <div
         style={{
           flex: 1,

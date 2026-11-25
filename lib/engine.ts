@@ -5,6 +5,12 @@ import type {
   GameState,
   MissionRecord,
   Player,
+  PlotCard,
+  PlotCardKey,
+  PlotPending,
+  PlotState,
+  PlotThen,
+  PlotWindowKind,
   QuestCard,
   RoleKey,
   TimerKey,
@@ -36,6 +42,7 @@ import {
   secureRandom,
   shuffle,
 } from "./rules";
+import { PLOT_INFO, plotDeck, plotDraws } from "./plots";
 
 export class GameError extends Error {}
 
@@ -156,6 +163,13 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
     ["forfeit", "official", "unopposed"].includes(rejectionVariant),
     "Unknown rejection variant"
   );
+  // Plot cards and Trapper never run together: switching one on switches the other off
+  let plotCards = !!(cfg.plotCards ?? cur.plotCards);
+  let trapper = !!(cfg.trapper ?? cur.trapper);
+  if (plotCards && trapper) {
+    if (cfg.trapper === true) plotCards = false;
+    else trapper = false;
+  }
   return {
     ...s,
     config: {
@@ -167,12 +181,13 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
       goodMayFail: !!(cfg.goodMayFail ?? cur.goodMayFail),
       ladyOfTheLake: !!(cfg.ladyOfTheLake ?? cur.ladyOfTheLake),
       excalibur: !!(cfg.excalibur ?? cur.excalibur),
-      trapper: !!(cfg.trapper ?? cur.trapper),
+      trapper,
       lancelotSchedule,
       lancelotForcedCards: !!(cfg.lancelotForcedCards ?? cur.lancelotForcedCards),
       lancelotEvilKnown: !!(cfg.lancelotEvilKnown ?? cur.lancelotEvilKnown),
       lancelotsMeet: !!(cfg.lancelotsMeet ?? cur.lancelotsMeet),
       targeting: !!(cfg.targeting ?? cur.targeting),
+      plotCards,
       timers: !!(cfg.timers ?? cur.timers),
       timerForce: !!(cfg.timerForce ?? cur.timerForce),
       timerSeconds,
@@ -219,6 +234,22 @@ export function beginCourt(s: GameState, rng: () => number = secureRandom): Game
           flips: [],
         }
       : null,
+    plot: config.plotCards
+      ? {
+          deck: shuffle(plotDeck(n).map((key, i) => ({ id: `plot${i}`, key })), rng),
+          discard: [],
+          drawn: [],
+          hands: {},
+          charges: [],
+          pending: [],
+          window: null,
+          strongLeaderBlocked: false,
+          spotlit: [],
+          ambushed: [],
+          secrets: [],
+          events: [],
+        }
+      : null,
     players: s.players.map((p) => ({ ...p, ready: false })),
     leaderIndex,
     nextLeader: null,
@@ -257,7 +288,7 @@ export function playerReady(s: GameState, playerId: string): GameState {
   const players = s.players.map((p) => (p.id === playerId ? { ...p, ready: true } : p));
   const next: GameState = { ...s, players };
   if (!players.every((p) => p.ready)) return next;
-  return { ...startRound(next, 0), phase: "proposal" };
+  return enterRound(startRound(next, 0));
 }
 
 /**
@@ -357,7 +388,8 @@ export function propose(
     excaliburHolderId = excaliburId;
   }
   if (isUnopposedProposal(s)) {
-    return {
+    // no vote is taken, so King Returns has nothing to cancel
+    return enterQuest({
       ...s,
       quest,
       proposal: unique,
@@ -365,17 +397,25 @@ export function propose(
       votes: {},
       voteMeta: null,
       lastVote: { approve: 0, reject: 0, unopposed: true },
-      questCards: {},
-      phase: "quest",
-    };
+    });
   }
   return { ...s, quest, proposal: unique, excaliburHolderId, votes: {}, voteMeta: null, phase: "voting" };
+}
+
+/** Players with a Charge in play: they vote first, face up. */
+export function chargeHolders(s: GameState): string[] {
+  return [...new Set(s.plot?.charges ?? [])];
 }
 
 export function vote(s: GameState, playerId: string, v: Vote, now = Date.now()): GameState {
   assert(s.phase === "voting", "Not voting now");
   assert(v === "approve" || v === "reject", "Unknown vote");
   assert(!(playerId in s.votes), "Your vote is sealed — no unvote");
+  const charges = chargeHolders(s);
+  assert(
+    charges.includes(playerId) || charges.every((id) => id in s.votes),
+    "Charge holders vote first"
+  );
   const votes = { ...s.votes, [playerId]: v };
   const next: GameState = { ...s, votes };
   if (Object.keys(votes).length === s.players.length) {
@@ -392,20 +432,32 @@ export function ackVoteReveal(s: GameState, now = Date.now(), force = false): Ga
   const elapsed = now - s.voteMeta.revealAt;
   assert(force || elapsed >= VOTE_REVEAL_MS - 250, "The court is still watching");
   const { approve, reject, approved } = s.voteMeta;
-  // votes are never recorded on screen afterward — cleared here, tally kept for the recap
-  const base: GameState = { ...s, votes: {}, voteMeta: null };
+  // votes are never recorded on screen afterward — cleared here, tally kept for the recap.
+  // A vote has now been taken, so Lead to Victory can be played again.
+  const base: GameState = {
+    ...s,
+    votes: {},
+    voteMeta: null,
+    plot: s.plot ? { ...s.plot, strongLeaderBlocked: false } : s.plot,
+  };
   if (approved) {
-    return {
-      ...base,
-      lastVote: { approve, reject, unopposed: false },
-      questCards: {},
-      phase: "quest",
-    };
+    const next: GameState = { ...base, lastVote: { approve, reject, unopposed: false } };
+    const holders = holdersOf(next, "kingReturns");
+    if (holders.length) return openWindow(next, "kingReturns", holders, "quest");
+    return enterQuest(next);
   }
+  return rejectTeam(base, approve, reject);
+}
+
+/**
+ * A team falls: rejected by vote, or cancelled by King Returns (which counts as a
+ * rejected vote). Five in a row ends the quest or the game per the rejection rule.
+ */
+function rejectTeam(s: GameState, approve: number, reject: number): GameState {
   const rejections = s.rejections + 1;
   if (rejections >= 5 && s.config.rejectionVariant === "official") {
     return {
-      ...base,
+      ...s,
       rejections,
       phase: "gameover",
       winner: "evil",
@@ -413,7 +465,7 @@ export function ackVoteReveal(s: GameState, now = Date.now(), force = false): Ga
     };
   }
   if (rejections >= 5 && s.config.rejectionVariant === "forfeit") {
-    return closeMission(base, {
+    return closeMission(s, {
       mission: currentQuest(s),
       team: [],
       approve,
@@ -424,15 +476,29 @@ export function ackVoteReveal(s: GameState, now = Date.now(), force = false): Ga
       success: false,
     });
   }
-  return {
-    ...base,
-    rejections,
-    leaderIndex: (s.leaderIndex + 1) % s.players.length,
-    proposal: [],
-    quest: null,
-    excaliburHolderId: null,
-    phase: "proposal",
+  return toLeaderTurn(
+    {
+      ...s,
+      rejections,
+      leaderIndex: (s.leaderIndex + 1) % s.players.length,
+      proposal: [],
+      quest: null,
+      excaliburHolderId: null,
+    },
+    false
+  );
+}
+
+/** The team is approved (or rides unopposed): ask any We Found You holders, then cards. */
+function enterQuest(s: GameState): GameState {
+  const next: GameState = {
+    ...s,
+    questCards: {},
+    phase: "quest",
+    plot: s.plot ? { ...s.plot, spotlit: [] } : s.plot,
   };
+  const holders = holdersOf(next, "weFoundYou");
+  return holders.length ? openWindow(next, "weFoundYou", holders, "cards") : next;
 }
 
 export function playQuestCard(
@@ -462,9 +528,14 @@ export function playQuestCard(
   return afterExcalibur(next, now, rng);
 }
 
-/** Once the sword has resolved (or there was none): the trap, else straight to the reveal. */
+/**
+ * Once the sword has resolved (or there was none): the trap, else any Ambush holders
+ * (who look after Excalibur, per the rules), else straight to the reveal.
+ */
 function afterExcalibur(s: GameState, now: number, rng: () => number): GameState {
   if (s.config.trapper === true) return { ...s, phase: "trap" };
+  const holders = holdersOf(s, "ambush");
+  if (holders.length) return openWindow(s, "ambush", holders, "reveal");
   return revealQuest(s, now, rng);
 }
 
@@ -505,6 +576,7 @@ export function wieldExcalibur(
   }
   assert(targetId !== playerId, "Excalibur cannot turn on its wielder");
   assert(s.proposal.includes(targetId), "Excalibur reaches only the company");
+  assert(!s.plot?.spotlit.includes(targetId), "Excalibur cannot switch a card played face up");
   const original = s.questCards[targetId];
   const switched: QuestCard = original === "success" ? "fail" : "success";
   return {
@@ -578,6 +650,7 @@ function closeMission(s: GameState, record: MissionRecord): GameState {
     proposal: [],
     quest: null,
     excaliburHolderId: null,
+    plot: s.plot ? { ...s.plot, spotlit: [] } : s.plot,
   };
   if (losses >= 3) {
     return {
@@ -602,13 +675,13 @@ function closeMission(s: GameState, record: MissionRecord): GameState {
   // quest number, since Targeting can take them in any order), forfeits included.
   // The next round's allegiance card resolves first, so she sees a Lancelot's new side.
   const ladyTurn = !!s.lady && history.length >= 2 && history.length <= 4;
-  return {
+  const next: GameState = {
     ...startRound(base, s.mission + 1),
     mission: s.mission + 1,
     rejections: 0,
     leaderIndex: (s.leaderIndex + 1) % s.players.length,
-    phase: ladyTurn ? "lady" : "proposal",
   };
+  return ladyTurn ? { ...next, phase: "lady" } : enterRound(next);
 }
 
 /** Players the current Lady may examine: anyone who has never held the token. */
@@ -639,15 +712,286 @@ export function ladyPass(s: GameState, playerId: string): GameState {
   assert(s.phase === "ladyReveal" && s.lady, "The Lady is not abroad");
   assert(s.lady.holderId === playerId, "The Lady is not yours");
   const check = s.lady.checks[s.lady.checks.length - 1];
-  return {
+  return enterRound({
     ...s,
-    phase: "proposal",
     lady: {
       ...s.lady,
       holderId: check.targetId,
       pastHolderIds: [...s.lady.pastHolderIds, check.targetId],
     },
-  };
+  });
+}
+
+/* ---------------------------------------------------------------- Plot cards */
+
+/** Player ids clockwise from the leader, leader first: the rules' order of precedence. */
+function seatOrderFromLeader(s: GameState): string[] {
+  const n = s.players.length;
+  return Array.from({ length: n }, (_, i) => s.players[(s.leaderIndex + i) % n].id);
+}
+
+/** Holders of a held Plot card, in precedence order. Empty when Plot cards are off. */
+export function holdersOf(s: GameState, key: PlotCardKey): string[] {
+  const hands = s.plot?.hands ?? {};
+  return seatOrderFromLeader(s).filter((id) => (hands[id] ?? []).some((c) => c.key === key));
+}
+
+function withPlot(s: GameState, patch: Partial<PlotState>): GameState {
+  return { ...s, plot: { ...s.plot!, ...patch } };
+}
+
+function openWindow(s: GameState, kind: PlotWindowKind, queue: string[], then: PlotThen): GameState {
+  return withPlot({ ...s, phase: "plotWindow" }, { window: { kind, queue, then } });
+}
+
+/** Pick up wherever a window or the Plot step left off. */
+function plotContinue(s: GameState, then: PlotThen, now = Date.now(), rng = secureRandom): GameState {
+  const closed = s.plot ? withPlot(s, { window: null }) : s;
+  switch (then) {
+    case "draw":
+      return drawPlots(closed, rng);
+    case "proposal":
+      return { ...closed, phase: "proposal" };
+    case "quest":
+      return enterQuest(closed);
+    case "cards":
+      return { ...closed, phase: "quest" };
+    case "reveal":
+      return revealQuest(closed, now, rng);
+  }
+}
+
+/** A new round: Ambush checks reset, then the leader's turn begins with the Plot draw. */
+function enterRound(s: GameState): GameState {
+  return toLeaderTurn(s.plot ? withPlot(s, { ambushed: [] }) : s, true);
+}
+
+/**
+ * Before any leader acts: Lead to Victory holders may take the lead (unless one was
+ * played since the last vote). At a round's start the Plot draw follows; otherwise the
+ * proposal.
+ */
+function toLeaderTurn(s: GameState, roundStart: boolean): GameState {
+  if (!s.plot) return { ...s, phase: "proposal" };
+  const then: PlotThen = roundStart ? "draw" : "proposal";
+  const lead = leader(s).id;
+  const holders = holdersOf(s, "leadToVictory").filter((id) => id !== lead);
+  if (!s.plot.strongLeaderBlocked && holders.length) return openWindow(s, "leadToVictory", holders, then);
+  return plotContinue(s, then);
+}
+
+/** The leader draws this round's Plot cards; the discards are reshuffled if the deck runs short. */
+function drawPlots(s: GameState, rng: () => number): GameState {
+  const p = s.plot!;
+  const want = plotDraws(s.players.length);
+  let deck = p.deck;
+  let discard = p.discard;
+  if (deck.length < want && discard.length) {
+    deck = [...deck, ...shuffle(discard, rng)];
+    discard = [];
+  }
+  const drawn = deck.slice(0, want);
+  const next = withPlot(s, { deck: deck.slice(drawn.length), discard, drawn });
+  return { ...next, phase: drawn.length ? "plotDeal" : "proposal" };
+}
+
+/** Other players' held cards, which Restore Your Honor can take. */
+export function takeableCards(s: GameState, actorId: string): { playerId: string; card: PlotCard }[] {
+  const hands = s.plot?.hands ?? {};
+  return seatOrderFromLeader(s)
+    .filter((id) => id !== actorId)
+    .flatMap((id) => (hands[id] ?? []).map((card) => ({ playerId: id, card })));
+}
+
+/** The two players beside this one (Are You the One). */
+export function neighboursOf(s: GameState, playerId: string): string[] {
+  const n = s.players.length;
+  const i = s.players.findIndex((p) => p.id === playerId);
+  return [s.players[(i - 1 + n) % n].id, s.players[(i + 1) % n].id];
+}
+
+/** The leader hands every drawn card to another player: `assignments` maps card id → player id. */
+export function plotDeal(s: GameState, playerId: string, assignments: Record<string, string>): GameState {
+  assert(s.phase === "plotDeal" && s.plot, "No Plot cards to hand out");
+  assert(leader(s).id === playerId, "Only the leader hands out Plot cards");
+  const p = s.plot;
+  const hands = { ...p.hands };
+  const charges = [...p.charges];
+  const pending: PlotPending[] = [];
+  for (const card of p.drawn) {
+    const to = assignments?.[card.id];
+    assert(
+      to && to !== playerId && s.players.some((x) => x.id === to),
+      "Hand each Plot card to another player"
+    );
+    const type = PLOT_INFO[card.key].type;
+    if (type === "held") hands[to] = [...(hands[to] ?? []), card];
+    else if (type === "permanent") charges.push(to);
+    else pending.push({ card, holderId: to, actorId: card.key === "showStrength" ? playerId : to });
+  }
+  // use-immediately cards resolve clockwise from the leader, by who was handed them
+  const order = seatOrderFromLeader(s);
+  pending.sort((a, b) => order.indexOf(a.holderId) - order.indexOf(b.holderId));
+  const events = [
+    ...p.events,
+    ...p.drawn.map((c) => ({
+      round: s.mission,
+      key: c.key,
+      kind: "given" as const,
+      byId: playerId,
+      targetId: assignments[c.id],
+    })),
+  ];
+  return nextPending(withPlot(s, { hands, charges, pending, drawn: [], events }));
+}
+
+/** Move to the next use-immediately card, skipping a Restore Your Honor with nothing to take. */
+function nextPending(s: GameState): GameState {
+  const p = s.plot!;
+  let pending = p.pending;
+  let discard = p.discard;
+  while (pending.length && pending[0].card.key === "restoreHonor" && !takeableCards(s, pending[0].actorId).length) {
+    discard = [...discard, pending[0].card];
+    pending = pending.slice(1);
+  }
+  const next = withPlot(s, { pending, discard });
+  return { ...next, phase: pending.length ? "plotResolve" : "proposal" };
+}
+
+/**
+ * Resolve the next use-immediately card. `targetId` is the neighbour (Are You the One),
+ * the viewer (Show Your True Nature, Show Your Strength), or the player to take from
+ * (Restore Your Honor, with `cardId`).
+ */
+export function plotResolve(
+  s: GameState,
+  playerId: string,
+  targetId: string | null,
+  cardId: string | null = null
+): GameState {
+  assert(s.phase === "plotResolve" && s.plot && s.plot.pending.length, "Nothing to resolve");
+  const p = s.plot;
+  const { card, actorId } = p.pending[0];
+  assert(actorId === playerId, "This Plot card isn't yours to resolve");
+  assert(
+    targetId && targetId !== playerId && s.players.some((x) => x.id === targetId),
+    "Choose another player"
+  );
+  let hands = p.hands;
+  let secrets = p.secrets;
+  const loyaltyOf = (viewerId: string, subjectId: string) => ({
+    round: s.mission,
+    viewerId,
+    subjectId,
+    via: card.key,
+    loyalty: allegianceOf(s, subjectId),
+    card: null,
+  });
+  switch (card.key) {
+    case "areYouTheOne":
+      assert(neighboursOf(s, playerId).includes(targetId), "Choose the player on your left or right");
+      secrets = [...secrets, loyaltyOf(playerId, targetId)];
+      break;
+    case "trueNature":
+    case "showStrength":
+      // the actor (the holder, or the leader for Show Your Strength) shows their own loyalty
+      secrets = [...secrets, loyaltyOf(targetId, playerId)];
+      break;
+    case "restoreHonor": {
+      const theirs = hands[targetId] ?? [];
+      const taken = theirs.find((c) => c.id === cardId);
+      assert(taken, "Choose one of their held Plot cards");
+      hands = {
+        ...hands,
+        [targetId]: theirs.filter((c) => c.id !== cardId),
+        [playerId]: [...(hands[playerId] ?? []), taken],
+      };
+      break;
+    }
+  }
+  const events = [...p.events, { round: s.mission, key: card.key, kind: "used" as const, byId: playerId, targetId }];
+  return nextPending(
+    withPlot(s, {
+      hands,
+      secrets,
+      events,
+      discard: [...p.discard, card],
+      pending: p.pending.slice(1),
+    })
+  );
+}
+
+/** The asked holder declines; the next holder is asked, or play moves on. */
+export function plotPass(s: GameState, playerId: string, now = Date.now(), rng = secureRandom): GameState {
+  const w = s.plot?.window;
+  assert(s.phase === "plotWindow" && w, "No Plot card can be played now");
+  assert(w.queue[0] === playerId, "It isn't your turn to decide");
+  return advanceWindow(s, now, rng);
+}
+
+function advanceWindow(s: GameState, now: number, rng: () => number): GameState {
+  const w = s.plot!.window!;
+  const queue = w.queue.slice(1);
+  if (queue.length) return withPlot(s, { window: { ...w, queue } });
+  return plotContinue(s, w.then, now, rng);
+}
+
+/** The asked holder plays the card the window is for (`targetId`: a rider, for We Found You and Ambush). */
+export function plotPlay(
+  s: GameState,
+  playerId: string,
+  targetId: string | null,
+  now = Date.now(),
+  rng = secureRandom
+): GameState {
+  const w = s.plot?.window;
+  assert(s.phase === "plotWindow" && w, "No Plot card can be played now");
+  assert(w.queue[0] === playerId, "It isn't your turn to decide");
+  const p = s.plot!;
+  const hand = p.hands[playerId] ?? [];
+  const card = hand.find((c) => c.key === w.kind);
+  assert(card, "You don't hold that card");
+  const spent = withPlot(s, {
+    hands: { ...p.hands, [playerId]: hand.filter((c) => c.id !== card.id) },
+    discard: [...p.discard, card],
+    events: [...p.events, { round: s.mission, key: w.kind, kind: "used", byId: playerId, targetId }],
+  });
+  switch (w.kind) {
+    case "leadToVictory": {
+      // no other Lead to Victory until a vote has been taken, so the window closes
+      const lead = { ...spent, leaderIndex: s.players.findIndex((x) => x.id === playerId) };
+      return plotContinue(withPlot(lead, { strongLeaderBlocked: true }), w.then, now, rng);
+    }
+    case "kingReturns": {
+      const v = s.lastVote;
+      return rejectTeam(withPlot(spent, { window: null }), v?.approve ?? 0, v?.reject ?? 0);
+    }
+    case "weFoundYou":
+      assert(
+        targetId && s.proposal.includes(targetId) && targetId !== playerId && !p.spotlit.includes(targetId),
+        "Choose another rider who isn't already playing face up"
+      );
+      return advanceWindow(withPlot(spent, { spotlit: [...p.spotlit, targetId] }), now, rng);
+    case "ambush": {
+      assert(
+        targetId && s.proposal.includes(targetId) && !p.ambushed.includes(targetId),
+        "Choose a rider whose card no one has checked this round"
+      );
+      const secret = {
+        round: s.mission,
+        viewerId: playerId,
+        subjectId: targetId,
+        via: "ambush" as const,
+        loyalty: null,
+        card: s.questCards[targetId],
+      };
+      return advanceWindow(
+        withPlot(spent, { ambushed: [...p.ambushed, targetId], secrets: [...p.secrets, secret] }),
+        now,
+        rng
+      );
+    }
+  }
 }
 
 export function assassinate(
@@ -710,8 +1054,11 @@ export function ackAssassinationReveal(s: GameState, now = Date.now(), force = f
 /** Back to Court Setup with the same seats. Allowed from gameover or mid-game (host restart). */
 export function playAgain(s: GameState): GameState {
   assert(s.phase !== "lobby" && s.phase !== "setup", "The court has not convened yet");
-  // a leader restarted before proposing (reveal, the Lady's turn, proposal) never picked a team, so they keep the lead
-  const leaderPicked = !["reveal", "lady", "ladyReveal", "proposal"].includes(s.phase);
+  // a leader restarted before proposing (reveal, the Lady, the Plot draw, proposal) never picked a team, so they keep the lead
+  const beforeProposal =
+    ["reveal", "lady", "ladyReveal", "proposal", "plotDeal", "plotResolve"].includes(s.phase) ||
+    (s.phase === "plotWindow" && s.plot?.window?.kind === "leadToVictory");
+  const leaderPicked = !beforeProposal;
   const n = s.players.length;
   const nextIndex = (s.leaderIndex + (leaderPicked ? 1 : 0)) % n;
   return {
@@ -801,12 +1148,35 @@ function forceDecision(s: GameState, now: number, rng: () => number): GameState 
       return propose(s, lead, team, sword, quest);
     }
     case "voting": {
+      // Charge holders first, as the rules require
       let next = s;
-      for (const p of s.players) {
-        if (!(p.id in next.votes)) next = vote(next, p.id, rng() < 0.5 ? "approve" : "reject", now);
+      const order = [...new Set([...chargeHolders(s), ...s.players.map((p) => p.id)])];
+      for (const id of order) {
+        if (!(id in next.votes)) next = vote(next, id, rng() < 0.5 ? "approve" : "reject", now);
       }
       return next;
     }
+    case "plotDeal": {
+      const lead = leader(s).id;
+      const others = s.players.filter((p) => p.id !== lead).map((p) => p.id);
+      const assignments = Object.fromEntries(s.plot!.drawn.map((c) => [c.id, pick(others, rng)]));
+      return plotDeal(s, lead, assignments);
+    }
+    case "plotResolve": {
+      const { card, actorId } = s.plot!.pending[0];
+      if (card.key === "restoreHonor") {
+        const choice = pick(takeableCards(s, actorId), rng);
+        return plotResolve(s, actorId, choice.playerId, choice.card.id);
+      }
+      const targets =
+        card.key === "areYouTheOne"
+          ? neighboursOf(s, actorId)
+          : s.players.filter((p) => p.id !== actorId).map((p) => p.id);
+      return plotResolve(s, actorId, pick(targets, rng));
+    }
+    case "plotWindow":
+      // declining is the choice that changes nothing
+      return plotPass(s, s.plot!.window!.queue[0], now, rng);
     case "quest": {
       let next = s;
       for (const id of s.proposal) {

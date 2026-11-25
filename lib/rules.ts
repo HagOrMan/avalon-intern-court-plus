@@ -92,6 +92,7 @@ export function normalizeConfig(c: StoredConfig): Config {
     lancelotEvilKnown: c.lancelotEvilKnown !== false,
     lancelotsMeet: c.lancelotsMeet === true,
     targeting: c.targeting === true,
+    plotCards: c.plotCards === true,
     timers: c.timers === true,
     timerForce: c.timerForce === true,
     timerSeconds: { ...DEFAULT_TIMER_SECONDS, ...(c.timerSeconds ?? {}) },
@@ -108,6 +109,7 @@ export const DEFAULT_TIMER_SECONDS: Record<TimerKey, number> = {
   lady: 60,
   excalibur: 60,
   trap: 60,
+  plot: 60,
 };
 /** Which timer runs in each phase. A module's "reveal" step shares its choice's timer. */
 export const TIMER_FOR_PHASE: Partial<Record<Phase, TimerKey>> = {
@@ -121,6 +123,9 @@ export const TIMER_FOR_PHASE: Partial<Record<Phase, TimerKey>> = {
   excaliburReveal: "excalibur",
   trap: "trap",
   trapReveal: "trap",
+  plotDeal: "plot",
+  plotResolve: "plot",
+  plotWindow: "plot",
 };
 
 /** Allegiance decks: hidden flips 3 of 5 (rounds 3–5); known deals 5 of 7 face up (rounds 1–5). */

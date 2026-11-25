@@ -10,12 +10,16 @@ import { QuestScreen, VoteScreen } from "./VoteQuest";
 import { AssassinScreen } from "./Assassin";
 import { LadyChooseScreen, LadyResultScreen, LadyVerdict } from "./Lady";
 import { CardLine, ExcaliburScreen, ExcaliburSeenScreen, TrapScreen, TrapSeenScreen } from "./Sword";
+import { PlotCardFace, PlotDealScreen, PlotResolveScreen, PlotSeenLine, PlotWindowScreen } from "./Plot";
+import { PLOT_INFO } from "@/lib/plots";
 import { Plate } from "@/components/Plate";
 import { MAX_PLAYERS } from "@/lib/rules";
 
 /** Hold the header chip to privately recall your role mid-game; release to hide. */
-function RolePeek({ v }: { v: PlayerView }) {
+function RolePeek({ v, onOpen }: { v: PlayerView; onOpen: () => void }) {
   const [held, setHeld] = useState(false);
+  const myPlots = v.plot?.hands.find((h) => h.playerId === v.me.id)?.cards ?? [];
+  const myCharge = v.plot?.charges.includes(v.me.id) ?? false;
   // the overlay covers the chip, so end the hold from window-level events
   useEffect(() => {
     if (!held) return;
@@ -44,6 +48,7 @@ function RolePeek({ v }: { v: PlayerView }) {
         onPointerDown={(e) => {
           e.preventDefault();
           setHeld(true);
+          onOpen();
         }}
         onContextMenu={(e) => e.preventDefault()}
         aria-label="Hold to recall your role"
@@ -88,6 +93,17 @@ function RolePeek({ v }: { v: PlayerView }) {
           {v.trapsSeen.map((t) => (
             <CardLine key={`t${t.mission}`} label={`TRAPPED · ROUND ${t.mission + 1}`} name={t.targetName} card={t.card} />
           ))}
+          {v.plotSeen.map((seen, i) => (
+            <PlotSeenLine key={`p${i}`} seen={seen} />
+          ))}
+          {(myPlots.length > 0 || myCharge) && (
+            <div style={{ width: "100%", maxWidth: 320, display: "grid", gap: 4 }}>
+              {myCharge && <PlotCardFace cardKey="charge" compact />}
+              {myPlots.map((c) => (
+                <PlotCardFace key={c.id} cardKey={c.key} compact />
+              ))}
+            </div>
+          )}
           <div
             style={{
               font: "600 11px var(--font-body)",
@@ -103,12 +119,12 @@ function RolePeek({ v }: { v: PlayerView }) {
   );
 }
 
-function Header({ v }: { v: PlayerView }) {
+function Header({ v, onPeek }: { v: PlayerView; onPeek: () => void }) {
   const leaderLabel =
     v.leaderId === v.me.id ? "♛ YOU" : v.leaderName ? `♛ ${v.leaderName}` : "—";
   return (
     <div className="phone-header" style={{ alignItems: "center" }}>
-      <RolePeek v={v} />
+      <RolePeek v={v} onOpen={onPeek} />
       <span>
         {v.phase === "gameover"
           ? "ENDGAME"
@@ -167,6 +183,9 @@ export function Controller({
   const { view: v, fatal, toast, act } = useRoom<PlayerView>(code, token);
   const [showLeave, setShowLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  // private Plot results read so far; a newer one shows a nudge to hold the ROLE chip
+  const [plotRead, setPlotRead] = useState(0);
+  const unreadPlot = (v?.plotSeen.length ?? 0) > plotRead;
 
   const leave = async () => {
     setLeaving(true);
@@ -244,6 +263,30 @@ export function Controller({
         );
       case "reveal":
         return <RoleReveal v={v} act={act} />;
+      case "plotDeal":
+        if (v.plotTurn?.kind === "deal") return <PlotDealScreen v={v} act={act} />;
+        return (
+          <Waiting
+            title={`${v.leaderName} draws Plot cards`}
+            sub="They hand each one to another player, face up."
+          />
+        );
+      case "plotResolve":
+        if (v.plotTurn?.kind === "resolve") return <PlotResolveScreen v={v} act={act} />;
+        return (
+          <Waiting
+            title={`${v.plot?.pending?.actorName} resolves ${v.plot?.pending ? PLOT_INFO[v.plot.pending.key].name : "a Plot card"}`}
+            sub="Whatever it shows goes to one player alone."
+          />
+        );
+      case "plotWindow":
+        if (v.plotTurn?.kind === "window") return <PlotWindowScreen v={v} act={act} />;
+        return (
+          <Waiting
+            title={`${v.plot?.window?.askingName} may play ${v.plot?.window ? PLOT_INFO[v.plot.window.kind].name : "a Plot card"}…`}
+            sub="Holders are asked in turn, clockwise from the leader."
+          />
+        );
       case "lady":
         if (v.ladyTargets) return <LadyChooseScreen v={v} act={act} />;
         return (
@@ -372,7 +415,12 @@ export function Controller({
 
   return (
     <main className="phone-screen">
-      <Header v={v} />
+      <Header v={v} onPeek={() => setPlotRead(v.plotSeen.length)} />
+      {unreadPlot && (
+        <div style={{ font: "600 11px var(--font-body)", letterSpacing: "0.12em", color: "var(--gold)", textAlign: "center", padding: "6px 0" }}>
+          ◉ SOMETHING FOR YOUR EYES ONLY · HOLD ROLE TO READ
+        </div>
+      )}
       {body()}
       {v.paused && (
         <div className="pause-overlay">

@@ -107,10 +107,18 @@ player. If that player is Merlin, Evil wins. Otherwise Good wins.
 
 ## 2. Variants and modules
 
-Built so far: the Wraith, Lady of the Lake, Excalibur, Trapper, Lancelot + Guinevere,
-Targeting and timers (all settings, §3). Lady, Excalibur, Trapper and Targeting sit
-under Setup → Customize → Modules. Planned: the Plot cards. Section 5 lists what each
-needs, with the decisions already made.
+All built: the Wraith, Lady of the Lake, Excalibur, Trapper, Lancelot + Guinevere,
+Targeting, Plot cards and timers (all settings, §3). Lady, Excalibur, Trapper,
+Targeting and Plot cards sit under Setup → Customize → Modules. Section 5 describes how
+each is implemented.
+
+**Order at a round's start**, when several modules apply:
+
+1. The Lancelot allegiance card.
+2. The Lady.
+3. Lead to Victory.
+4. The Plot draw.
+5. The proposal.
 
 **Order within a quest**, when several modules apply:
 
@@ -336,7 +344,8 @@ not the round, including the house two-Fail 5th quest at 13+.
 
 ### 2.8 Plot cards (*The Plot Thickens*, from *The Resistance*)
 
-Planned as a setting. These are the full official rules.
+Built as a setting under Modules (§5 has how it plays in the app). These are the full
+official rules.
 
 **Contents and use**
 - 15 Plot cards, each marked for the player counts it's used at. Games of 5–6 players
@@ -424,6 +433,7 @@ players, with the full 15-card deck.
 | Trapper | `teamSize`, `trapCard`, `trapDone`, `revealQuest`; `components/phone/Sword.tsx` | Yes, when on (§2.6) |
 | Lancelot | `allegianceOf`, `startRound`, `knowledgeFor`, `knownEvilTo` | Yes, per the chosen switches (§2.4) |
 | Targeting | `availableQuests`, `currentQuest`, `propose` | Yes, when on (§2.7) |
+| Plot cards | `drawPlots`, `plotDeal`, `plotResolve`, `plotPlay`/`plotPass`, `vote` (Charge) | Yes, when on (§2.8) |
 
 ### Role names
 
@@ -481,6 +491,7 @@ target anyone, Evil included, because he doesn't know who they are.
 | Excalibur | On / off | Off |
 | Trapper | On / off | Off |
 | Targeting | On / off | Off |
+| Plot cards | On / off (switches Trapper off) | Off |
 | Timers | Off / on, a length per decision, and at zero: reminder only / force a random choice | Off; reminder only |
 
 When Good must succeed, Good riders still get a green and a red button, and **both play
@@ -503,7 +514,7 @@ also refuses a Fail from Good.
 | D8 | **Assassination can be turned off** | Always on when Merlin and the Assassin are in play | A setting | `config.assassination` |
 | D9 | **Assassin can't target known Evil** | Nothing stops it; it would just be a wasted guess | The engine refuses known-Evil targets. Oberon is targetable unless he holds the blade himself, in which case he can target anyone | `assassinate`; `playerView.assassin` |
 | D10 | **First leader carries over between games** | Random every game | Rotation continues from the previous game if the table is unchanged | `nextLeader`, `docs/fairness.md` §3 |
-| D11 | **Modules missing** | Plot cards | Not implemented yet (§5). Trapper, which is built, comes from *Hostile Intent*, not Avalon | §5 |
+| D11 | **Plot cards in Avalon** | A *Resistance* expansion, usable with Avalon's Loyalty cards | Built, with the Avalon card names. House rules: 4 draws at 11+, discards reshuffled when the deck runs out | §2.8, §5 |
 | D13 | **Lancelot variants combine** | One variant at a time | Four independent switches; Setup notes the official rule | `config.lancelot*` |
 | D14 | **Guinevere** | Not in the board game (online platform role) | Good; sees both Lancelots; a second assassination mark | `knowledgeFor`, `isAssassinMark` |
 | D12 | **Lady after a forfeited quest** | A quest is lost to rejections only under the "quest fails" house rule | A forfeited quest counts as resolved, so the Lady check still follows it | `closeMission` |
@@ -566,16 +577,53 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
   - Phones show "ROUND n / 5" in the header.
 - **Forced timers** pick a random available quest along with the random team.
 
-**Plot cards**
-- Rules are complete. Deck per player count and draws per round (1/2/3/4) are in §2.8.
-- Setup must refuse Plot cards and Trapper together (either toggle switches the other
-  off, and `updateConfig` refuses the pair).
-- This is the largest module after Lancelot. It adds public hands of cards, responses
-  that can interrupt (No Confidence after a vote, Strong Leader before a proposal), a
-  vote pre-reveal (Opinion Maker), a face-up quest card (In the Spotlight), and private
-  Loyalty and quest-card peeks.
-- Each card's timing window needs a step where holders are asked in turn, in seat
-  order from the leader, as the rules require.
+**Plot cards: built.** The card data is in `lib/plots.ts`; the state is `GameState.plot`.
+
+- **Round start** (`enterRound` → `toLeaderTurn` → `drawPlots`):
+  - First a **Lead to Victory** window, then the leader draws 1/2/3/4 cards.
+  - If the deck runs short, the discards are reshuffled under it. That only happens at
+    11+, where 4 draws a round outlast 15 cards.
+  - The leader hands each drawn card to another player (`plotDeal`).
+  - ⚔ cards go face up into that player's hand, and ⛨ Charge stays in play.
+  - ★ cards resolve at once, in precedence order (`plotResolve`). Restore Your Honor
+    with nothing to take is discarded with no effect.
+- **Windows** (`plotWindow`): at each point a held card can be used, its holders are
+  asked one at a time, clockwise from the leader (`holdersOf`). Each may play or keep
+  it, and a holder who keeps it isn't asked again in the same window.
+  - **Lead to Victory:** before every leader's turn (round start and after each
+    rejection), except the current leader. Playing it makes the holder leader and closes
+    the window. No other can be played until a vote is taken
+    (`strongLeaderBlocked`, cleared in `ackVoteReveal`).
+  - **King Returns:** after an approved vote, not after an unopposed team. Playing it
+    sends the team through `rejectTeam`, which counts it as a rejected vote: the lead
+    passes, and the 5th rejection follows the rejection rule.
+  - **We Found You:** after approval, before any card is played. The holder targets a
+    rider other than themselves. That rider's card shows on the TV and phones as soon as
+    it's played, and Excalibur can't switch it.
+  - **Ambush:** after cards and Excalibur, before the reveal. The holder privately sees
+    one rider's (post-switch) card. Each rider can be checked at most once a round.
+- **Charge:** `vote` refuses everyone else until every Charge holder has voted. Their
+  votes are public (TV seats, phones) as soon as all Charge holders have voted, so two
+  Charges reveal together.
+- **Private results:** Are You the One, Show Your True Nature, Show Your Strength and
+  Ambush results go only into the viewer's `plotSeen`. They're hidden until the ROLE
+  chip is held, and a nudge appears when a new one arrives. Loyalty means current
+  loyalty, so a switched Lancelot shows his current side.
+- **What's public:** cards drawn, every hand and Charge, who is being asked, and the
+  latest action ("Dana played Ambush · Sam").
+- **Exclusive with Trapper:** `updateConfig` turns the other off; the last one switched
+  on wins.
+- **Forced timers** (Plot timer, default 1 minute):
+  - The deal hands cards out at random, and ★ choices are random and legal.
+  - A window passes, the choice that changes nothing.
+  - A forced vote fills Charge holders first.
+
+**Interpretations to know about:**
+- "Each round" means each of the five quest rounds, not each proposal. So the draw
+  happens once a round, by whoever leads first that round.
+- Restore Your Honor takes only held (⚔) cards, never a Charge in play.
+- A use-immediately card's choice is made at once by its holder, or by the leader for
+  Show Your Strength.
 
 **Lancelot (+ Guinevere): built.**
 - `isEvil(role)` is a role's *starting* side: seat counting and night sight use it.

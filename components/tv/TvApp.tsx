@@ -221,6 +221,9 @@ export function TvApp({
       case "excaliburReveal":
       case "trap":
       case "trapReveal":
+      case "plotDeal":
+      case "plotResolve":
+      case "plotWindow":
         return <RoundTable v={v} />;
       case "voteReveal":
         return <VoteReveal v={v} clockOffset={clockOffset} />;

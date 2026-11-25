@@ -73,7 +73,7 @@ async function dealAndSwearIn() {
   }
   for (const p of players) await act(p.token, "ready");
   const tv = await readView(code, hostToken);
-  assert(tv.phase === "proposal", "all sworn in -> proposal");
+  assert(["proposal", "plotDeal"].includes(tv.phase), "all sworn in -> the first round");
   console.log("cast:", players.map((p) => `${p.name}=${roleOf[p.playerId]}`).join(" "));
   return roleOf;
 }
@@ -458,6 +458,58 @@ roleOf = await dealAndSwearIn();
   refused = false;
   try { await act(leaderTok, "propose", { team: teamFor(2), quest: 2 }); } catch { refused = true; }
   assert(refused, "proposing an attempted quest is refused");
+}
+
+/* ---- game 7: Plot cards ---- */
+await act(hostToken, "restart");
+await act(hostToken, "updateConfig", { config: { targeting: false, trapper: true } });
+await act(hostToken, "updateConfig", { config: { plotCards: true } });
+tv = await readView(code, hostToken);
+assert(tv.config.plotCards && !tv.config.trapper, "Plot cards switch Trapper off");
+roleOf = await dealAndSwearIn();
+{
+  tv = await readView(code, hostToken);
+  assert(tv.phase === "plotDeal" && tv.plot.drawn.length === 1, "the leader draws 1 Plot card at 5 players");
+  const leaderP = players.find((p) => p.playerId === tv.leaderId);
+  const card = (await readView(code, leaderP.token)).plotTurn.cards[0];
+  let kept = false;
+  try { await act(leaderP.token, "plotDeal", { assignments: { [card.id]: leaderP.playerId } }); } catch { kept = true; }
+  assert(kept, "the leader can't keep a Plot card");
+  const to = players.find((p) => p !== leaderP);
+  await act(leaderP.token, "plotDeal", { assignments: { [card.id]: to.playerId } });
+  tv = await readView(code, hostToken);
+  assert(tv.plot.deckCount === 6, "6 cards left in the 7-card deck");
+  // the 5–6 deck's only use-immediately card, Restore Your Honor, has nothing to take in round 1
+  assert(tv.phase === "proposal", "Plot cards handed out -> proposal");
+  if (card.key === "charge") assert(tv.plot.charges.includes(to.playerId), "Charge stays in play");
+  else if (card.key === "restoreHonor") assert(!tv.plot.hands.length, "Restore Your Honor with nothing to take does nothing");
+  else
+    assert(
+      tv.plot.hands.some((h) => h.playerId === to.playerId && h.cards.some((c) => c.id === card.id)),
+      "a held card sits face up in front of its holder"
+    );
+
+  const leaderTok = players.find((p) => p.playerId === tv.leaderId).token;
+  await act(leaderTok, "propose", { team: players.slice(0, tv.teamSize).map((p) => p.playerId) });
+  if (card.key === "charge") {
+    const other = players.find((p) => p !== to);
+    let early = false;
+    try { await act(other.token, "vote", { vote: "approve" }); } catch { early = true; }
+    assert(early, "Charge holders vote first");
+  }
+  for (const p of [to, ...players.filter((p) => p !== to)]) await act(p.token, "vote", { vote: "approve" });
+  await sleep(6100);
+  await act(hostToken, "ack");
+  tv = await readView(code, hostToken);
+  if (card.key === "kingReturns") {
+    assert(tv.phase === "plotWindow" && tv.plot.window.askingId === to.playerId, "King Returns' holder is asked after an approval");
+    await act(to.token, "plotPlay", {});
+    tv = await readView(code, hostToken);
+    assert(tv.rejections === 1 && !tv.plot.hands.length, "King Returns cancels the team as a rejected vote");
+  } else {
+    assert(tv.phase === "quest", "the approved team rides");
+  }
+  console.log(`  (Plot card this run: ${card.key})`);
 }
 
 console.log("\nALL PASSED");

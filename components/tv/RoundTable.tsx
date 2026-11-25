@@ -2,6 +2,7 @@
 
 import type { TvView } from "@/lib/views";
 import { Crest } from "@/components/Crest";
+import { PLOT_INFO, PLOT_SIGIL } from "@/lib/plots";
 
 /** Quest track: resolved ◯/◆, current ringed gold, two-fail double-ringed. */
 export function QuestTrack({ v }: { v: TvView }) {
@@ -202,6 +203,39 @@ export function Candles({ v }: { v: TvView }) {
   );
 }
 
+/**
+ * A seat's public Plot state: held cards, a Charge (and its vote once all Charges have
+ * voted), and a face-up quest card. Plot cards are open information under the rules.
+ */
+function SeatPlots({ v, playerId, small }: { v: TvView; playerId: string; small: boolean }) {
+  const plot = v.plot!;
+  const cards = plot.hands.find((h) => h.playerId === playerId)?.cards ?? [];
+  const charge = plot.charges.includes(playerId);
+  const chargeVote = plot.chargeVotes?.find((c) => c.playerId === playerId)?.vote;
+  const spot = plot.spotlit.find((x) => x.playerId === playerId);
+  if (!cards.length && !charge && !spot) return null;
+  const size = small ? 13 : 15;
+  return (
+    <div style={{ display: "grid", gap: 2, font: `600 ${size}px var(--font-body)`, letterSpacing: "0.06em", color: "var(--parchment-75)" }}>
+      {cards.map((c) => (
+        <div key={c.id}>
+          {PLOT_SIGIL[PLOT_INFO[c.key].type]} {PLOT_INFO[c.key].name.toUpperCase()}
+        </div>
+      ))}
+      {charge && (
+        <div style={{ color: "var(--gold)" }}>
+          ⛨ CHARGE{chargeVote ? (chargeVote === "approve" ? " · ◯ APPROVE" : " · ◆ REJECT") : ""}
+        </div>
+      )}
+      {spot && (
+        <div style={{ color: "var(--gold)" }}>
+          FACE UP{spot.card ? (spot.card === "success" ? " · ◯ SUCCESS" : " · ◆ FAIL") : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** TV-3 · the persistent round table. */
 export function RoundTable({ v }: { v: TvView }) {
   const players = [...v.players].sort((a, b) => a.seat - b.seat);
@@ -213,6 +247,30 @@ export function RoundTable({ v }: { v: TvView }) {
   const ry = crowded ? 310 : 300;
 
   const banner = () => {
+    if (v.phase === "plotDeal" && v.plot) {
+      return (
+        <>
+          <span style={{ color: "var(--gold)" }}>{v.leaderName}</span> draws{" "}
+          {v.plot.drawn.map((c) => PLOT_INFO[c.key].name).join(", ")}
+        </>
+      );
+    }
+    if (v.phase === "plotResolve" && v.plot?.pending) {
+      return (
+        <>
+          <span style={{ color: "var(--gold)" }}>{v.plot.pending.actorName}</span> resolves{" "}
+          {PLOT_INFO[v.plot.pending.key].name}…
+        </>
+      );
+    }
+    if (v.phase === "plotWindow" && v.plot?.window) {
+      return (
+        <>
+          Will <span style={{ color: "var(--gold)" }}>{v.plot.window.askingName}</span> play{" "}
+          {PLOT_INFO[v.plot.window.kind].name}?
+        </>
+      );
+    }
     if (v.phase === "lady") {
       return (
         <>
@@ -362,6 +420,7 @@ export function RoundTable({ v }: { v: TvView }) {
             >
               {p.name}
             </div>
+            {v.plot && <SeatPlots v={v} playerId={p.id} small={crowded} />}
             {v.excalibur?.holderId === p.id && (
               <div style={{ font: `600 ${crowded ? 14 : 16}px var(--font-body)`, letterSpacing: "0.1em", color: "var(--gold)" }}>
                 ⚔ EXCALIBUR
@@ -385,6 +444,23 @@ export function RoundTable({ v }: { v: TvView }) {
           </div>
         );
       })}
+      {v.plot?.lastEvent && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 132,
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            font: "500 24px var(--font-body)",
+            color: "rgba(237,230,214,0.6)",
+          }}
+        >
+          {v.plot.lastEvent.kind === "given"
+            ? `${v.plot.lastEvent.byName} handed ${PLOT_INFO[v.plot.lastEvent.key].name} to ${v.plot.lastEvent.targetName}`
+            : `${v.plot.lastEvent.byName} played ${PLOT_INFO[v.plot.lastEvent.key].name}${v.plot.lastEvent.targetName ? ` · ${v.plot.lastEvent.targetName}` : ""}`}
+        </div>
+      )}
       <div
         className="serif"
         style={{

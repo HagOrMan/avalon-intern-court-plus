@@ -29,6 +29,9 @@ export type Phase =
   | "trap"
   | "trapReveal"
   | "questReveal"
+  | "plotDeal"
+  | "plotResolve"
+  | "plotWindow"
   | "assassination"
   | "assassinationReveal"
   | "gameover";
@@ -86,6 +89,8 @@ export interface Config {
   lancelotsMeet: boolean;
   /** Targeting: the leader picks which unattempted quest the team attempts */
   targeting: boolean;
+  /** Plot cards (The Plot Thickens). Never on together with `trapper`. */
+  plotCards: boolean;
   /** show a countdown on the TV for each timed decision */
   timers: boolean;
   /** at zero, decide at random for anyone who hasn't; off = the countdown is advisory only */
@@ -102,7 +107,80 @@ export type TimerKey =
   | "assassination"
   | "lady"
   | "excalibur"
-  | "trap";
+  | "trap"
+  | "plot";
+
+export type PlotCardKey =
+  | "kingReturns"
+  | "ambush"
+  | "leadToVictory"
+  | "charge"
+  | "restoreHonor"
+  | "areYouTheOne"
+  | "trueNature"
+  | "showStrength"
+  | "weFoundYou";
+
+export interface PlotCard {
+  id: string;
+  key: PlotCardKey;
+}
+
+/** The held cards, and so the moments the game stops to ask their holders. */
+export type PlotWindowKind = "leadToVictory" | "kingReturns" | "weFoundYou" | "ambush";
+
+/** What follows once a window closes. */
+export type PlotThen = "draw" | "proposal" | "quest" | "cards" | "reveal";
+
+export interface PlotPending {
+  card: PlotCard;
+  /** who was handed the card */
+  holderId: string;
+  /** who makes its choice: the holder, or the leader for Show Your Strength */
+  actorId: string;
+}
+
+/** A private result. Server only; each viewer's view carries their own. */
+export interface PlotSecret {
+  round: number;
+  viewerId: string;
+  subjectId: string;
+  via: PlotCardKey;
+  loyalty: Allegiance | null;
+  card: QuestCard | null;
+}
+
+export interface PlotEvent {
+  round: number;
+  key: PlotCardKey;
+  kind: "given" | "used";
+  byId: string;
+  targetId: string | null;
+}
+
+export interface PlotState {
+  /** face down. Server only. */
+  deck: PlotCard[];
+  discard: PlotCard[];
+  /** drawn by the leader, face up, waiting to be handed out */
+  drawn: PlotCard[];
+  /** held (⚔) cards, face up in front of each player */
+  hands: Record<string, PlotCard[]>;
+  /** players with a Charge in play (one entry per card) */
+  charges: string[];
+  /** use-immediately cards still to resolve, in precedence order */
+  pending: PlotPending[];
+  /** a moment when holders of one held card are asked in turn; queue[0] is being asked */
+  window: { kind: PlotWindowKind; queue: string[]; then: PlotThen } | null;
+  /** a Lead to Victory was played; no other until a vote has been taken */
+  strongLeaderBlocked: boolean;
+  /** riders playing face up this quest (We Found You) */
+  spotlit: string[];
+  /** riders whose card was Ambushed this round */
+  ambushed: string[];
+  secrets: PlotSecret[];
+  events: PlotEvent[];
+}
 
 export type AllegianceCard = "switch" | "blank";
 
@@ -219,6 +297,8 @@ export interface GameState {
   lady?: LadyState | null;
   /** null when no Lancelots are dealt; absent in rooms saved before the module existed */
   lancelot?: LancelotState | null;
+  /** null when Plot cards are off */
+  plot?: PlotState | null;
   /** the rider the leader armed for the current proposal */
   excaliburHolderId?: string | null;
   excaliburLog?: ExcaliburUse[];

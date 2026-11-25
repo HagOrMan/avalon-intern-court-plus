@@ -242,6 +242,8 @@ These aren't random, and that's correct. They're listed here so nobody "fixes" t
   failing that the blade follows `FLAG_PRIORITY`. It's tied to a role, not a seat, so
   it's exactly as random as the deal.
 - **Rotation direction**: always increasing seat index.
+- **Plot deck**: fixed contents per player count (`plotDeck`), shuffled at the deal; the
+  discards are reshuffled with `shuffle`/`secureRandom` only if the deck runs short.
 - **Lancelot allegiance decks**: fixed contents (`LANCELOT_HIDDEN_DECK`,
   `LANCELOT_KNOWN_DECK`), shuffled with `shuffle` and `secureRandom` at the deal.
   Randomness decides only the order.
@@ -274,6 +276,11 @@ Ordering and timing can leak information even when the random draws are fair. Au
 | A Lancelot's current side | His own role chip and quest buttons | Only his view. Everyone's view changes at the same moment when a card flips, so view updates don't single him out. Fine. |
 | Forced Lancelot's mission buttons | Both play his side's card | Same layout and colours as everyone else (§6). Fine. |
 | Forced timer choices (opt-in) | A random team, vote, card or target for whoever timed out | `secureRandom` via `pick`/`shuffle` in `forceDecision`. A timed-out Good rider plays Success, and a forced Lancelot his side's card, so a timeout can't create a Fail the rules forbid. An Evil rider's coin flip can produce one, as their own choice could. Fine. |
+| Plot cards drawn, hands, Charges, who is asked, latest action | Names and card names on TV and phones | Plot cards are face up under the rules. Fine. |
+| Plot draw deck | Nothing; only its count | Unflipped order never leaves the server. Fine. |
+| Charge votes | Each Charge holder's vote, once all have voted | Public by the card's rule. Nobody else can vote until then, so no vote is cast after seeing a partial Charge reveal. Fine. |
+| We Found You card | The spotlit rider's card once played | Public by the card's rule; only that rider's. Fine. |
+| Plot private results (loyalty, Ambush) | Only in the viewer's `plotSeen` | Hidden until held, neutral colours, never on the TV. Fine. |
 | Good rider's mission buttons | Both play Success; red is labelled SUCCESS | Same layout and colours as Evil (§6). Only the label differs, which needs a look at the screen. Fine. |
 | Game-over cast list | Every role, in seat order | Game is over. Fine. |
 

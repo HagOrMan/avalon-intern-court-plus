@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { TvView } from "@/lib/views";
 import type { RejectionVariant, RoleKey, TimerKey } from "@/lib/types";
 import { ROLES } from "@/lib/roles";
+import { plotDraws } from "@/lib/plots";
 import {
   BLADE_CHOICES,
   OPTIONAL_ROLES,
@@ -25,6 +26,7 @@ const TIMER_ROWS: [TimerKey, string][] = [
   ["lady", "Lady of the Lake"],
   ["excalibur", "Excalibur"],
   ["trap", "Trap"],
+  ["plot", "Plot cards"],
 ];
 const TIMER_STEPS = [10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 300, 420, 600];
 
@@ -104,6 +106,7 @@ export function TvSetup({
     v.config.excalibur && "EXCALIBUR",
     v.config.trapper && "TRAPPER",
     v.config.targeting && "TARGETING",
+    v.config.plotCards && "PLOT",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -322,8 +325,16 @@ export function TvSetup({
               "OFF · QUESTS IN ORDER",
               () => setConfig({ targeting: !v.config.targeting })
             )}
+            {switchRow(
+              "Plot cards",
+              v.config.plotCards,
+              `★ LEADER DRAWS ${plotDraws(n)} A ROUND`,
+              "OFF",
+              () => setConfig({ plotCards: !v.config.plotCards })
+            )}
             <div style={{ font: "400 20px/1.5 var(--font-body)", color: "var(--parchment-55)" }}>
               Targeting: any unattempted quest, but the 5th only after two others succeed.
+              Plot cards and Trapper can&apos;t both be on; turning one on turns the other off.
             </div>
             <button onClick={() => setPanel(null)} style={{ ...ghostBtn, justifySelf: "start" }}>
               ‹ BACK

@@ -10,6 +10,10 @@ import {
   ladyExamine,
   ladyPass,
   playAgain,
+  plotDeal,
+  plotPass,
+  plotPlay,
+  plotResolve,
   playerReady,
   playQuestCard,
   propose,
@@ -93,6 +97,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
           return trapCard(s, player.id, body.targetId);
         case "trapDone":
           return trapDone(s, player.id);
+        case "plotDeal":
+          return plotDeal(s, player.id, body.assignments ?? {});
+        case "plotResolve":
+          return plotResolve(s, player.id, body.targetId ?? null, body.cardId ?? null);
+        case "plotPlay":
+          return plotPlay(s, player.id, body.targetId ?? null);
+        case "plotPass":
+          return plotPass(s, player.id);
         default:
           throw new GameError("Unknown action");
       }
