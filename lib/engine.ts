@@ -7,6 +7,7 @@ import type {
   Player,
   QuestCard,
   RoleKey,
+  TimerKey,
   TrapRecord,
   Vote,
 } from "./types";
@@ -14,6 +15,10 @@ import {
   ASSASSIN_REVEAL_MS,
   AUTO_ADVANCE_GRACE_MS,
   BLADE_CHOICES,
+  DEFAULT_TIMER_SECONDS,
+  TIMER_FOR_PHASE,
+  TIMER_MAX_S,
+  TIMER_MIN_S,
   LANCELOT_HIDDEN_DECK,
   LANCELOT_KNOWN_DECK,
   MAX_PLAYERS,
@@ -133,6 +138,15 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
   if (!pairOn && specials.includes("guinevere")) specials.splice(specials.indexOf("guinevere"), 1);
   const lancelotSchedule = cfg.lancelotSchedule ?? cur.lancelotSchedule;
   assert(["none", "hidden", "known"].includes(lancelotSchedule), "Unknown Lancelot schedule");
+  const timerSeconds = { ...cur.timerSeconds };
+  for (const [key, secs] of Object.entries(cfg.timerSeconds ?? {})) {
+    assert(key in DEFAULT_TIMER_SECONDS, "Unknown timer");
+    assert(
+      Number.isInteger(secs) && secs >= TIMER_MIN_S && secs <= TIMER_MAX_S,
+      `Timers run from ${TIMER_MIN_S} seconds to ${TIMER_MAX_S / 60} minutes`
+    );
+    timerSeconds[key as TimerKey] = secs;
+  }
   // seat counts aren't checked here: players can still join during setup, so an overfull
   // deck is allowed and refused at beginCourt
   const assassinFlag = cfg.assassinFlag ?? cur.assassinFlag;
@@ -158,6 +172,9 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
       lancelotForcedCards: !!(cfg.lancelotForcedCards ?? cur.lancelotForcedCards),
       lancelotEvilKnown: !!(cfg.lancelotEvilKnown ?? cur.lancelotEvilKnown),
       lancelotsMeet: !!(cfg.lancelotsMeet ?? cur.lancelotsMeet),
+      timers: !!(cfg.timers ?? cur.timers),
+      timerForce: !!(cfg.timerForce ?? cur.timerForce),
+      timerSeconds,
     },
   };
 }
@@ -679,8 +696,16 @@ export function playAgain(s: GameState): GameState {
   };
 }
 
-/** Lazily advance scripted beats if the TV never acked (disconnects, dead room). */
-export function autoAdvance(s: GameState, now = Date.now()): GameState | null {
+/**
+ * Lazily advance scripted beats if the TV never acked (disconnects, dead room), and,
+ * only when the host turned on forced timers, decide at random for anyone who let a
+ * timed decision run out.
+ */
+export function autoAdvance(
+  s: GameState,
+  now = Date.now(),
+  rng: () => number = secureRandom
+): GameState | null {
   if (s.phase === "voteReveal" && s.voteMeta) {
     if (now - s.voteMeta.revealAt >= VOTE_REVEAL_MS + AUTO_ADVANCE_GRACE_MS)
       return ackVoteReveal(s, now, true);
@@ -696,5 +721,92 @@ export function autoAdvance(s: GameState, now = Date.now()): GameState | null {
     if (now - s.assassinRevealAt >= ASSASSIN_REVEAL_MS + AUTO_ADVANCE_GRACE_MS)
       return ackAssassinationReveal(s, now, true);
   }
+  const endsAt = timerEndsAt(s);
+  if (endsAt !== null && s.config.timerForce === true && now >= endsAt) {
+    try {
+      return forceDecision(s, now, rng);
+    } catch (e) {
+      if (e instanceof GameError) return null;
+      throw e;
+    }
+  }
   return null;
+}
+
+/** When the current phase's timer runs out, or null if it isn't timed (or timers are off). */
+export function timerEndsAt(s: GameState): number | null {
+  const key = TIMER_FOR_PHASE[s.phase];
+  if (!key || s.config.timers !== true || !s.phaseStartedAt) return null;
+  return s.phaseStartedAt + normalizeConfig(s.config).timerSeconds[key] * 1000;
+}
+
+/** Record when a phase began, so its timer counts from there. */
+export function stampPhase(prev: GameState, next: GameState, now: number): GameState {
+  return next.phase === prev.phase ? next : { ...next, phaseStartedAt: now };
+}
+
+function pick<T>(items: T[], rng: () => number): T {
+  return items[Math.floor(rng() * items.length)];
+}
+
+/**
+ * The card a timed-out rider plays: whatever their side forces, Success for Good,
+ * and a coin flip for anyone free to choose Evil's way.
+ */
+function fallbackCard(s: GameState, playerId: string, rng: () => number): QuestCard {
+  const side = allegianceOf(s, playerId);
+  const role = s.roles[playerId];
+  const lancelot = role === "lancelotGood" || role === "lancelotEvil";
+  if (lancelot && s.config.lancelotForcedCards === true) return side === "evil" ? "fail" : "success";
+  if (side === "good") return "success";
+  return rng() < 0.5 ? "fail" : "success";
+}
+
+/** Make the outstanding choice(s) of the current phase at random, through the normal engine moves. */
+function forceDecision(s: GameState, now: number, rng: () => number): GameState {
+  switch (s.phase) {
+    case "proposal": {
+      const lead = leader(s).id;
+      const team = shuffle(s.players, rng).slice(0, teamSize(s)).map((p) => p.id);
+      const sword = s.config.excalibur === true ? pick(team.filter((id) => id !== lead), rng) : null;
+      return propose(s, lead, team, sword);
+    }
+    case "voting": {
+      let next = s;
+      for (const p of s.players) {
+        if (!(p.id in next.votes)) next = vote(next, p.id, rng() < 0.5 ? "approve" : "reject", now);
+      }
+      return next;
+    }
+    case "quest": {
+      let next = s;
+      for (const id of s.proposal) {
+        if (!(id in next.questCards)) next = playQuestCard(next, id, fallbackCard(next, id, rng), now, rng);
+      }
+      return next;
+    }
+    case "assassination": {
+      const holder = s.flagHolderId!;
+      const known = knownEvilTo(s, holder);
+      const targets = s.players.filter((p) => p.id !== holder && !known.includes(p.id));
+      return assassinate(s, holder, pick(targets, rng).id, now);
+    }
+    case "lady":
+      return ladyExamine(s, s.lady!.holderId, pick(ladyTargets(s), rng).id);
+    case "ladyReveal":
+      return ladyPass(s, s.lady!.holderId);
+    case "excalibur": {
+      const holder = s.excaliburHolderId!;
+      const choices: (string | null)[] = [null, ...s.proposal.filter((id) => id !== holder)];
+      return wieldExcalibur(s, holder, pick(choices, rng), now, rng);
+    }
+    case "excaliburReveal":
+      return excaliburDone(s, s.excaliburHolderId!, now, rng);
+    case "trap":
+      return trapCard(s, leader(s).id, pick(s.proposal, rng));
+    case "trapReveal":
+      return trapDone(s, leader(s).id, now, rng);
+    default:
+      return s;
+  }
 }

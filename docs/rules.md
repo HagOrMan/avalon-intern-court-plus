@@ -107,8 +107,8 @@ player. If that player is Merlin, Evil wins. Otherwise Good wins.
 
 ## 2. Variants and modules
 
-Built so far: the Wraith, Lady of the Lake, Excalibur, Trapper, and Lancelot +
-Guinevere (all settings, §3). Planned: discussion timers, Targeting and the Plot cards. Section 5
+Built so far: the Wraith, Lady of the Lake, Excalibur, Trapper, Lancelot + Guinevere,
+and timers (all settings, §3). Planned: Targeting and the Plot cards. Section 5
 lists what each needs, with the decisions already made.
 
 **Order within a quest**, when several modules apply:
@@ -346,7 +346,7 @@ Planned as a setting. These are the full official rules.
 
 **Distribution**
 - At the start of each round, the leader draws Plot cards: **1** at 5–6 players, **2** at
-  7–8, **3** at 9–10.
+  7–8, **3** at 9–10 (and **4** at 11+, house rule).
 - The leader hands them to **other players**, never themselves.
 - There are only 5 rounds.
 
@@ -365,19 +365,26 @@ Planned as a setting. These are the full official rules.
 
 **The cards**
 
-| Card | × | Type | Effect |
-|---|---|---|---|
-| No Confidence | 3 | ⚔ | Cancels an **approved** team and forces a change of leader. Using it counts as a failed vote. |
-| Keeping a Close Eye on You | 2 | ⚔ | Look at one played Quest card. It needn't be announced before cards are played, and doesn't change the card. Several cards can be checked in one round, but no player's card can be checked by more than one player in a round. |
-| Strong Leader | 2 | ⚔ | Become the leader. It must be declared before the leader acts (drawing Plot cards or handing out team cards). After one is played, another can't be played until a vote has been taken. |
-| Overheard Conversation | 2 | ★ | The player the leader gives it to must look at the card of **one adjacent player** (immediate left or right). They pick the neighbour publicly; the result is private. |
-| Opinion Maker | 2 | ⛨ | The holder must choose and reveal their vote **first, publicly**, for the rest of the game. If two are in play, those two reveal at the same time. |
-| Establish Confidence | 1 | ★ | The **leader** must show their card to a player of their choice. |
-| Open Up | 1 | ★ | The player given it must show their card to one player of their choice, the leader included. |
-| In the Spotlight | 1 | ⚔ | Force another player to play their Quest card **face up**. It must be declared, with the target, before any rider picks a card. |
-| Take Responsibility | 1 | ⚔ | The player given it **must** take one Plot card from any other player. Listed as one-time use, not use-immediately. |
+| Avalon name | Resistance name | 5–6 | 7+ | Type | Effect |
+|---|---|---|---|---|---|
+| King Returns | No Confidence | 1 | 3 | ⚔ | Cancels an **approved** team and passes the leadership. Using it counts as a failed vote. |
+| Ambush | Keeping a Close Eye on You | 2 | 2 | ⚔ | Secretly look at one played Quest card. It needn't be announced before cards are played, and doesn't change the card. Several cards can be checked in one round, but no player's card can be checked by more than one player in a round. |
+| Lead to Victory | Strong Leader | 2 | 2 | ⚔ | Become the leader before a team is proposed. It must be declared before the leader acts (drawing Plot cards or handing out team cards). After one is played, another can't be played until a vote has been taken. |
+| Charge | Opinion Maker | 1 | 2 | ⛨ | The holder must choose and reveal their vote **first, publicly**, for the rest of the game. If two are in play, those two reveal at the same time. |
+| Restore Your Honor | Take Responsibility | 1 | 1 | ⚔ | The player given it **must** take one held Plot card from another player. |
+| Are You the One | Overheard Conversation | — | 2 | ★ | The player the leader gives it to must look at the Loyalty card of **one adjacent player** (immediate left or right). They pick the neighbour publicly; the result is private. |
+| Show Your True Nature | Open Up | — | 1 | ★ | The player given it must show their Loyalty card to one player of their choice, the leader included. |
+| Show Your Strength | Establish Confidence | — | 1 | ★ | The **leader** must show their Loyalty card to a player of their choice. |
+| We Found You | In the Spotlight | — | 1 | ⚔ | Force one rider to play their Quest card **face up**. It must be declared, with the target, before any rider picks a card. |
 
-The counts total 15. In Avalon, "show their card" means the matching **Loyalty** card,
+The deck is **7 cards at 5–6 players** and **15 at 7+**. The Avalon names are the ones
+the app will use.
+
+Two sources differ on two cards. The table follows the fuller rules text:
+- **Restore Your Honor:** "one-time use" in the rules text, "immediately" in the summary.
+  Either way it's mandatory.
+- **We Found You:** "another player" in the rules text, "one Quest member" in the
+  summary. Only a rider plays a Quest card, so the target has to be a rider. In Avalon, "show their card" means the matching **Loyalty** card,
 never the character card (see above). The online text calls them "Mission cards"; they
 are the Quest cards here.
 
@@ -388,8 +395,8 @@ enforce this when Plot cards are built.
 - Excalibur resolves before "Keeping a Close Eye on You".
 - Excalibur can't switch a card played face up because of "In the Spotlight".
 
-**Still unknown:** which 7 cards are marked for 5–6 players. That's printed on the
-physical cards, and it's needed before this is built (§5).
+**Above 10 players (house rule):** the leader draws **4** Plot cards per round at 11+
+players, with the full 15-card deck.
 
 ---
 
@@ -469,6 +476,7 @@ target anyone, Evil included, because he doesn't know who they are.
 | Lady of the Lake | On / off, at any player count | Off |
 | Excalibur | On / off | Off |
 | Trapper | On / off | Off |
+| Timers | Off / on, a length per decision, and at zero: reminder only / force a random choice | Off; reminder only |
 
 When Good must succeed, Good riders still get a green and a red button, and **both play
 Success**. Phones look the same to anyone watching (`docs/fairness.md` §6). The server
@@ -543,9 +551,7 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 - UI: a quest picker on the leader's phone, and the chosen quest ringed on the TV.
 
 **Plot cards**
-- Needs from you, before building: which 7 cards are marked for 5–6 players. The rules
-  only give the draw count up to 10 players (1/2/3), so 11–16 needs a house number.
-  Extending 9–10's 3, or using 4 at 13+, are the obvious options.
+- Rules are complete. Deck per player count and draws per round (1/2/3/4) are in §2.8.
 - Setup must refuse Plot cards and Trapper together (either toggle switches the other
   off, and `updateConfig` refuses the pair).
 - This is the largest module after Lancelot. It adds public hands of cards, responses
@@ -579,26 +585,29 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 - Assassination: a hit on Merlin **or Guinevere** wins for Evil (`assassinate`, the
   reveal beat, the game-over copy).
 
-**Discussion timers**
-- **Decided:**
-  - Every decision gets a timer: 2 minutes for proposals, 1 minute for votes and the
-    assassination.
-  - Each timer is adjustable from 10 seconds to 10 minutes.
-  - A soft countdown shows on the TV.
-  - A setting can force the game on at zero, picking at random for anyone who hasn't
-    decided.
-- Random fallbacks go through `secureRandom` (`docs/fairness.md` §1), and each has a
-  natural choice:
-  - Proposal: a random team of the right size.
+**Timers: built.**
+- **Settings** (Customize → Timers):
+  - Off by default. When on, the TV shows a countdown for each decision.
+  - Lengths step from 10 seconds to 10 minutes. Defaults: proposals 2 minutes,
+    everything else 1 minute (votes, quest cards, the assassination, the Lady,
+    Excalibur, the trap).
+  - The role reveal has **no** timer.
+  - **At zero, nothing happens by default.** The game is played in person, and a player
+    who idles or disconnects can reconnect. The countdown just reads "TIME".
+- **Forcing (opt-in):** with "At zero: force" on, the server decides at random for
+  anyone who hasn't (`autoAdvance` → `forceDecision`, through the normal engine moves,
+  using `secureRandom`):
+  - Proposal: a random team of the right size, plus a random sword holder if Excalibur
+    is on.
   - Vote: random Approve/Reject.
-  - Quest card: Good plays Success; Evil gets a coin flip.
+  - Quest card: whatever the rider's side forces; Good plays Success; Evil gets a coin
+    flip.
   - Assassination: a random legal target.
-  - Lady: a random eligible player, then an automatic pass.
-  - Excalibur: skip or a random rider.
-  - Trap: a random rider.
-- Default lengths: proposals 2 minutes; everything else 1 minute (votes, quest cards,
-  the assassination, the Lady, Excalibur, the trap).
-- The role reveal has **no** timer.
+  - Lady, Excalibur, trap: a random legal choice (Excalibur may also sheathe), then the
+    automatic "continue".
+- **Clock:** `phaseStartedAt` is stamped by `stampPhase` whenever the phase changes,
+  in both write paths (`mutateRoom` and the stream's `autoAdvance`). A module's
+  private "reveal" step shares its choice's timer and restarts it.
 
 ---
 

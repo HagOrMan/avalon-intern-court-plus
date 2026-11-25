@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { TvView } from "@/lib/views";
-import type { RejectionVariant, RoleKey } from "@/lib/types";
+import type { RejectionVariant, RoleKey, TimerKey } from "@/lib/types";
 import { ROLES } from "@/lib/roles";
 import {
   BLADE_CHOICES,
@@ -13,7 +13,24 @@ import {
   failsNeeded,
   isEvil,
   minPlayersFor,
+  TIMER_MAX_S,
+  TIMER_MIN_S,
 } from "@/lib/rules";
+
+const TIMER_ROWS: [TimerKey, string][] = [
+  ["proposal", "Proposal"],
+  ["voting", "Vote"],
+  ["quest", "Quest cards"],
+  ["assassination", "Assassination"],
+  ["lady", "Lady of the Lake"],
+  ["excalibur", "Excalibur"],
+  ["trap", "Trap"],
+];
+const TIMER_STEPS = [10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 300, 420, 600];
+
+function formatSecs(s: number): string {
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
 const REJECTION_ORDER: RejectionVariant[] = ["forfeit", "official", "unopposed"];
 const REJECTION_LABEL: Record<RejectionVariant, string> = {
@@ -80,7 +97,8 @@ export function TvSetup({
   const { specials } = v.config;
   const on = (r: RoleKey) => specials.includes(r);
 
-  const [lancelotPanel, setLancelotPanel] = useState(false);
+  // Customize sub-panels that would overflow the settings column
+  const [panel, setPanel] = useState<"lancelot" | "timers" | null>(null);
   // the two Lancelots share one row (the server keeps them paired)
   const pair: RoleKey[] = ["lancelotGood", "lancelotEvil"];
   const goodOptions = OPTIONAL_ROLES.filter((r) => !isEvil(r) && !pair.includes(r));
@@ -266,7 +284,44 @@ export function TvSetup({
           ))}
         </div>
 
-        {customize && lancelotPanel && lancelotOn ? (
+        {customize && panel === "timers" ? (
+          <div style={{ marginTop: 64, display: "grid", gap: 14, font: "500 24px var(--font-body)" }}>
+            {TIMER_ROWS.map(([key, label]) => {
+              const secs = v.config.timerSeconds[key];
+              const step = (d: number) => {
+                const next =
+                  d > 0
+                    ? TIMER_STEPS.find((x) => x > secs)
+                    : [...TIMER_STEPS].reverse().find((x) => x < secs);
+                if (next !== undefined) setConfig({ timerSeconds: { [key]: next } });
+              };
+              return (
+                <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>{label}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <button style={ghostBtn} onClick={() => step(-1)} disabled={secs <= TIMER_MIN_S}>−</button>
+                    <span style={{ minWidth: 90, textAlign: "center" }}>{formatSecs(secs)}</span>
+                    <button style={ghostBtn} onClick={() => step(1)} disabled={secs >= TIMER_MAX_S}>+</button>
+                  </span>
+                </div>
+              );
+            })}
+            {switchRow(
+              "At zero",
+              v.config.timerForce,
+              "FORCE · RANDOM CHOICE",
+              "JUST A REMINDER",
+              () => setConfig({ timerForce: !v.config.timerForce })
+            )}
+            <div style={{ font: "400 20px/1.5 var(--font-body)", color: "var(--parchment-55)" }}>
+              Countdowns show on the TV only. Forcing picks at random for anyone who hasn&apos;t
+              decided; Good riders always play Success.
+            </div>
+            <button onClick={() => setPanel(null)} style={{ ...ghostBtn, justifySelf: "start" }}>
+              ‹ BACK
+            </button>
+          </div>
+        ) : customize && panel === "lancelot" && lancelotOn ? (
           <div style={{ marginTop: 64, display: "grid", gap: 16, font: "500 24px var(--font-body)" }}>
             {switchRow(
               "Allegiance cards",
@@ -306,14 +361,14 @@ export function TvSetup({
               Officially only one variant is used at a time. V1: hidden cards, free choice,
               Evil sees him. V2: known cards, forced, Evil sees him. V3: Lancelots meet.
             </div>
-            <button onClick={() => setLancelotPanel(false)} style={{ ...ghostBtn, justifySelf: "start" }}>
+            <button onClick={() => setPanel(null)} style={{ ...ghostBtn, justifySelf: "start" }}>
               ‹ BACK
             </button>
           </div>
         ) : customize ? (
           <div style={{ marginTop: 64, display: "grid", gap: 16, font: "500 24px var(--font-body)" }}>
             {lancelotOn &&
-              switchRow("Lancelot variants", true, "EDIT ›", "", () => setLancelotPanel(true))}
+              switchRow("Lancelot variants", true, "EDIT ›", "", () => setPanel("lancelot"))}
             {switchRow(
               "Rejection rule",
               true,
@@ -373,14 +428,20 @@ export function TvSetup({
               "OFF",
               () => setConfig({ trapper: !v.config.trapper })
             )}
-            {["Discussion timers"].map((label) => (
-              <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", opacity: 0.4 }}>
-                <span>{label}</span>
-                <span style={{ font: "600 18px var(--font-body)", letterSpacing: "0.1em", border: "1px solid rgba(237,230,214,0.3)", padding: "4px 14px" }}>
-                  v2
-                </span>
-              </div>
-            ))}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>Timers</span>
+              <span style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => setConfig({ timers: !v.config.timers })}
+                  style={v.config.timers ? goldBtn : ghostBtn}
+                >
+                  {v.config.timers ? (v.config.timerForce ? "⧗ ON · FORCED" : "⧗ ON") : "OFF"}
+                </button>
+                <button onClick={() => setPanel("timers")} style={ghostBtn}>
+                  EDIT ›
+                </button>
+              </span>
+            </div>
           </div>
         ) : (
           <div style={{ font: "400 26px/1.5 var(--font-body)", color: "rgba(237,230,214,0.55)", marginTop: 70 }}>

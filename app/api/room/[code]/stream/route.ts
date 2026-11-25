@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { autoAdvance } from "@/lib/engine";
+import { autoAdvance, stampPhase } from "@/lib/engine";
 import { getStore } from "@/lib/store";
 import { playerView, tvView } from "@/lib/views";
 
@@ -62,10 +62,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
             state = row.state;
             version = row.version;
           }
-          // lazily advance scripted beats whose TV never acked
+          // lazily advance scripted beats whose TV never acked, and forced timers
           const advanced = autoAdvance(state, now);
           if (advanced) {
-            const next = { ...advanced, updatedAt: now };
+            const next = { ...stampPhase(state, advanced, now), updatedAt: now };
             if (await store.update(code, version, next)) {
               state = next;
               version += 1;

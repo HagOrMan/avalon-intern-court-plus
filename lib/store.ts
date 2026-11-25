@@ -1,7 +1,7 @@
 import { Redis } from "@upstash/redis";
 import type { GameState } from "./types";
 import { ROOM_TTL_SECONDS } from "./rules";
-import { GameError } from "./engine";
+import { GameError, stampPhase } from "./engine";
 
 export interface RoomStore {
   get(code: string): Promise<{ state: GameState; version: number } | null>;
@@ -185,7 +185,8 @@ export async function mutateRoom(
   for (let attempt = 0; attempt < 6; attempt++) {
     const row = await store.get(code);
     if (!row) throw new GameError("Room not found — it may have expired");
-    const next = { ...fn(row.state), updatedAt: Date.now() };
+    const now = Date.now();
+    const next = { ...stampPhase(row.state, fn(row.state), now), updatedAt: now };
     if (await store.update(code, row.version, next)) return next;
     await new Promise((r) => setTimeout(r, 40 + attempt * 60));
   }

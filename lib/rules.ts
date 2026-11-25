@@ -1,4 +1,4 @@
-import type { AllegianceCard, Config, RoleKey } from "./types";
+import type { AllegianceCard, Config, Phase, RoleKey, TimerKey } from "./types";
 
 export const MIN_PLAYERS = 5;
 export const MAX_PLAYERS = 16;
@@ -91,8 +91,36 @@ export function normalizeConfig(c: StoredConfig): Config {
     lancelotForcedCards: c.lancelotForcedCards === true,
     lancelotEvilKnown: c.lancelotEvilKnown !== false,
     lancelotsMeet: c.lancelotsMeet === true,
+    timers: c.timers === true,
+    timerForce: c.timerForce === true,
+    timerSeconds: { ...DEFAULT_TIMER_SECONDS, ...(c.timerSeconds ?? {}) },
   };
 }
+
+export const TIMER_MIN_S = 10;
+export const TIMER_MAX_S = 600;
+export const DEFAULT_TIMER_SECONDS: Record<TimerKey, number> = {
+  proposal: 120,
+  voting: 60,
+  quest: 60,
+  assassination: 60,
+  lady: 60,
+  excalibur: 60,
+  trap: 60,
+};
+/** Which timer runs in each phase. A module's "reveal" step shares its choice's timer. */
+export const TIMER_FOR_PHASE: Partial<Record<Phase, TimerKey>> = {
+  proposal: "proposal",
+  voting: "voting",
+  quest: "quest",
+  assassination: "assassination",
+  lady: "lady",
+  ladyReveal: "lady",
+  excalibur: "excalibur",
+  excaliburReveal: "excalibur",
+  trap: "trap",
+  trapReveal: "trap",
+};
 
 /** Allegiance decks: hidden flips 3 of 5 (rounds 3–5); known deals 5 of 7 face up (rounds 1–5). */
 export const LANCELOT_HIDDEN_DECK: AllegianceCard[] = ["switch", "switch", "blank", "blank", "blank"];

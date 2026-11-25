@@ -392,5 +392,28 @@ roleOf = await dealAndSwearIn();
   assert(tv.phase === "questReveal" && tv.questReveal.fails === 1, "forced cards counted");
 }
 
+/* ---- game 5: a forced vote timer runs out ---- */
+await act(hostToken, "restart");
+let badTimer = false;
+try { await act(hostToken, "updateConfig", { config: { timerSeconds: { voting: 5 } } }); } catch { badTimer = true; }
+assert(badTimer, "timers can't go below 10 seconds");
+await act(hostToken, "updateConfig", {
+  config: { timers: true, timerForce: true, timerSeconds: { voting: 10 } },
+});
+roleOf = await dealAndSwearIn();
+{
+  tv = await readView(code, hostToken);
+  assert(tv.timer && tv.timer.forced, "the TV gets a forced countdown");
+  const leaderTok = players.find((p) => p.playerId === tv.leaderId).token;
+  await act(leaderTok, "propose", { team: players.slice(0, tv.teamSize).map((p) => p.playerId) });
+  await act(players[0].token, "vote", { vote: "approve" });
+  await sleep(10600);
+  tv = await readView(code, hostToken);
+  assert(
+    tv.phase === "voteReveal" && tv.voteReveal.votes.every((x) => x.vote),
+    "at zero, the missing votes are cast at random"
+  );
+}
+
 console.log("\nALL PASSED");
 process.exit(0);

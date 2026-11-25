@@ -84,7 +84,23 @@ export interface Config {
   lancelotEvilKnown: boolean;
   /** the two Lancelots see each other at night */
   lancelotsMeet: boolean;
+  /** show a countdown on the TV for each timed decision */
+  timers: boolean;
+  /** at zero, decide at random for anyone who hasn't; off = the countdown is advisory only */
+  timerForce: boolean;
+  /** seconds per decision, each within TIMER_MIN_S..TIMER_MAX_S */
+  timerSeconds: Record<TimerKey, number>;
 }
+
+/** The decisions that can be timed. The role reveal has no timer. */
+export type TimerKey =
+  | "proposal"
+  | "voting"
+  | "quest"
+  | "assassination"
+  | "lady"
+  | "excalibur"
+  | "trap";
 
 export type AllegianceCard = "switch" | "blank";
 
@@ -160,6 +176,8 @@ export interface GameState {
   code: string;
   hostToken: string;
   phase: Phase;
+  /** server time the current phase began; stamped by `stampPhase` on every phase change */
+  phaseStartedAt?: number;
   players: Player[];
   config: Config;
   /** playerId -> role. Server only — stripped from every client view. */

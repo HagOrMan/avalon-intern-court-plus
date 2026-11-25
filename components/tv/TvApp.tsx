@@ -56,6 +56,40 @@ function Stage({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Soft countdown for the current decision, against server time. At zero it only says so,
+ * unless the host turned on forced timers (the server then decides at random).
+ */
+function TimerBadge({ timer, clockOffset }: { timer: { endsAt: number; forced: boolean }; clockOffset: number }) {
+  const now = useNow(true, 250);
+  const left = Math.max(0, Math.ceil((timer.endsAt - (now + clockOffset)) / 1000));
+  const low = left <= 10;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 130,
+        right: 80,
+        zIndex: 5,
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        font: "600 30px var(--font-body)",
+        letterSpacing: "0.08em",
+        color: low ? "var(--gold)" : "rgba(237,230,214,0.7)",
+      }}
+      className={left === 0 ? "flame" : undefined}
+    >
+      <span style={{ fontSize: 24 }}>⧗</span>
+      {left === 0
+        ? timer.forced
+          ? "TIME — FATE DECIDES"
+          : "TIME"
+        : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`}
+    </div>
+  );
+}
+
 /** Host escape hatch: back to Court Setup with the same seats. Two taps so it can't be hit by accident. */
 function RestartButton({ act }: { act: (a: string) => Promise<boolean> }) {
   const [armed, setArmed] = useState(false);
@@ -203,7 +237,10 @@ export function TvApp({
 
   return (
     <>
-      <Stage>{screen()}</Stage>
+      <Stage>
+        {screen()}
+        {v.timer && <TimerBadge timer={v.timer} clockOffset={clockOffset} />}
+      </Stage>
       {!["lobby", "setup", "gameover"].includes(v.phase) && <RestartButton act={act} />}
       {narrow && (
         <div

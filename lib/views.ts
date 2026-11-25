@@ -20,6 +20,7 @@ import {
   knownEvilTo,
   ladyTargets,
   leader,
+  timerEndsAt,
 } from "./engine";
 
 const PRESENCE_MS = 15000;
@@ -92,6 +93,8 @@ interface CommonView {
     flips: { round: number; card: AllegianceCard }[];
     switched: boolean;
   } | null;
+  /** the current decision's countdown (server time); `forced` = random choices at zero */
+  timer: { endsAt: number; forced: boolean } | null;
   serverNow: number;
 }
 
@@ -227,6 +230,10 @@ function common(s: GameState, seen: Record<string, number>, now: number): Common
     lancelot: s.lancelot
       ? { schedule: s.lancelot.schedule, flips: s.lancelot.flips, switched: s.lancelot.switched }
       : null,
+    timer: (() => {
+      const endsAt = timerEndsAt(s);
+      return endsAt === null ? null : { endsAt, forced: s.config.timerForce === true };
+    })(),
     serverNow: now,
   };
 }

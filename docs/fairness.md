@@ -273,6 +273,7 @@ Ordering and timing can leak information even when the random draws are fair. Au
 | Lancelot allegiance cards | Known schedule: all five; hidden: each card once flipped | Public under the rules. The hidden deck's unflipped cards never leave the server. Fine. |
 | A Lancelot's current side | His own role chip and quest buttons | Only his view. Everyone's view changes at the same moment when a card flips, so view updates don't single him out. Fine. |
 | Forced Lancelot's mission buttons | Both play his side's card | Same layout and colours as everyone else (§6). Fine. |
+| Forced timer choices (opt-in) | A random team, vote, card or target for whoever timed out | `secureRandom` via `pick`/`shuffle` in `forceDecision`. A timed-out Good rider plays Success, and a forced Lancelot his side's card, so a timeout can't create a Fail the rules forbid. An Evil rider's coin flip can produce one, as their own choice could. Fine. |
 | Good rider's mission buttons | Both play Success; red is labelled SUCCESS | Same layout and colours as Evil (§6). Only the label differs, which needs a look at the screen. Fine. |
 | Game-over cast list | Every role, in seat order | Game is over. Fine. |
 
