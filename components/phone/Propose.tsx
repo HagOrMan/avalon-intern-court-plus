@@ -13,8 +13,16 @@ export function ProposeScreen({
   const [picked, setPicked] = useState<string[]>([]);
   const [sword, setSword] = useState<string | null>(null);
   const [stamped, setStamped] = useState(false);
-  const n = v.teamSize;
-  const remaining = n - picked.length;
+  // under Targeting the leader also picks which quest this team attempts
+  const [quest, setQuest] = useState<number | null>(v.targeting ? null : v.mission);
+  const sizeOf = (q: number) => v.missionSizes[q] + v.extraRiders;
+  const n = quest === null ? 0 : sizeOf(quest);
+  const remaining = quest === null ? 1 : n - picked.length;
+
+  const chooseQuest = (q: number) => {
+    setQuest(q);
+    setPicked((cur) => cur.slice(0, sizeOf(q)));
+  };
   // the leader can't keep Excalibur, so it goes to another rider before proposing
   const needsSword = v.excaliburOn && remaining === 0 && !(sword && picked.includes(sword));
   const swordChoices = picked.filter((id) => id !== v.me.id);
@@ -28,14 +36,37 @@ export function ProposeScreen({
 
   const confirm = async () => {
     setStamped(true);
-    const ok = await act("propose", { team: picked, excaliburId: v.excaliburOn ? sword : null });
+    const ok = await act("propose", {
+      team: picked,
+      excaliburId: v.excaliburOn ? sword : null,
+      quest,
+    });
     if (!ok) setStamped(false);
   };
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, paddingTop: 14 }}>
+      {v.targeting && (
+        <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
+          {[0, 1, 2, 3, 4].map((q) => {
+            const open = v.availableQuests.includes(q);
+            return (
+              <button
+                key={q}
+                className={quest === q ? "btn-gold" : "btn-ghost"}
+                style={{ width: "auto", padding: "6px 10px", fontSize: 13, opacity: open ? 1 : 0.3 }}
+                disabled={!open}
+                onClick={() => chooseQuest(q)}
+              >
+                Q{q + 1} · {sizeOf(q)}
+                {v.failsNeeded[q] > 1 ? " ·2✕" : ""}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="serif" style={{ font: "600 24px var(--font-serif)", textAlign: "center" }}>
-        Choose {n} for Mission {v.mission + 1}
+        {quest === null ? "Choose a quest to attempt" : `Choose ${n} for Mission ${quest + 1}`}
       </div>
       <div
         style={{
@@ -45,7 +76,7 @@ export function ProposeScreen({
           marginBottom: 6,
         }}
       >
-        {picked.length} of {n} chosen
+        {quest === null ? "the riders come next" : `${picked.length} of ${n} chosen`}
         {v.rejectionVariant === "unopposed" && v.rejections >= 4
           ? " · the 5th proposal rides unopposed"
           : ""}
@@ -97,7 +128,9 @@ export function ProposeScreen({
         disabled={remaining !== 0 || needsSword || stamped}
         onClick={confirm}
       >
-        {remaining !== 0
+        {quest === null
+          ? "Propose — choose a quest first"
+          : remaining !== 0
           ? `Propose — choose ${remaining} more`
           : needsSword
             ? "Give Excalibur to a rider"

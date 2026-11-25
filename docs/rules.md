@@ -108,8 +108,9 @@ player. If that player is Merlin, Evil wins. Otherwise Good wins.
 ## 2. Variants and modules
 
 Built so far: the Wraith, Lady of the Lake, Excalibur, Trapper, Lancelot + Guinevere,
-and timers (all settings, §3). Planned: Targeting and the Plot cards. Section 5
-lists what each needs, with the decisions already made.
+Targeting and timers (all settings, §3). Lady, Excalibur, Trapper and Targeting sit
+under Setup → Customize → Modules. Planned: the Plot cards. Section 5 lists what each
+needs, with the decisions already made.
 
 **Order within a quest**, when several modules apply:
 
@@ -329,7 +330,9 @@ just as for Merlin.
 Rulebook example: at 8 players, the first leader may open with the 3rd quest. That
 needs 4 riders, so they pick 4 and place the round marker on quest 3 before the vote.
 
-Planned as a setting.
+**In the app** (built): a setting under Modules, off by default. The leader picks the
+quest on their phone along with the team (§5). The two-Fail rule follows the quest,
+not the round, including the house two-Fail 5th quest at 13+.
 
 ### 2.8 Plot cards (*The Plot Thickens*, from *The Resistance*)
 
@@ -420,6 +423,7 @@ players, with the full 15-card deck.
 | Excalibur | `propose`, `wieldExcalibur`, `excaliburDone`; `components/phone/Sword.tsx` | Yes, when on (§2.3) |
 | Trapper | `teamSize`, `trapCard`, `trapDone`, `revealQuest`; `components/phone/Sword.tsx` | Yes, when on (§2.6) |
 | Lancelot | `allegianceOf`, `startRound`, `knowledgeFor`, `knownEvilTo` | Yes, per the chosen switches (§2.4) |
+| Targeting | `availableQuests`, `currentQuest`, `propose` | Yes, when on (§2.7) |
 
 ### Role names
 
@@ -476,6 +480,7 @@ target anyone, Evil included, because he doesn't know who they are.
 | Lady of the Lake | On / off, at any player count | Off |
 | Excalibur | On / off | Off |
 | Trapper | On / off | Off |
+| Targeting | On / off | Off |
 | Timers | Off / on, a length per decision, and at zero: reminder only / force a random choice | Off; reminder only |
 
 When Good must succeed, Good riders still get a green and a red button, and **both play
@@ -498,7 +503,7 @@ also refuses a Fail from Good.
 | D8 | **Assassination can be turned off** | Always on when Merlin and the Assassin are in play | A setting | `config.assassination` |
 | D9 | **Assassin can't target known Evil** | Nothing stops it; it would just be a wasted guess | The engine refuses known-Evil targets. Oberon is targetable unless he holds the blade himself, in which case he can target anyone | `assassinate`; `playerView.assassin` |
 | D10 | **First leader carries over between games** | Random every game | Rotation continues from the previous game if the table is unchanged | `nextLeader`, `docs/fairness.md` §3 |
-| D11 | **Modules missing** | Targeting, Plot cards | Not implemented yet (§5). Trapper, which is built, comes from *Hostile Intent*, not Avalon | §5 |
+| D11 | **Modules missing** | Plot cards | Not implemented yet (§5). Trapper, which is built, comes from *Hostile Intent*, not Avalon | §5 |
 | D13 | **Lancelot variants combine** | One variant at a time | Four independent switches; Setup notes the official rule | `config.lancelot*` |
 | D14 | **Guinevere** | Not in the board game (online platform role) | Good; sees both Lancelots; a second assassination mark | `knowledgeFor`, `isAssassinMark` |
 | D12 | **Lady after a forfeited quest** | A quest is lost to rejections only under the "quest fails" house rule | A forfeited quest counts as resolved, so the Lady check still follows it | `closeMission` |
@@ -538,17 +543,28 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 - The Trapper's team is the mission size + 1. The largest is 9 + 1 = 10 riders at
   15–16, still within the table.
 
-**Targeting**
-- State: `attempted: number[]`, or read it from `history`. The mission index now
-  comes from the leader's choice, not `mission + 1`.
-- `propose` takes a quest index: not already attempted, and the 5th only after two
-  successes. `teamSize` and `failsNeeded` read the chosen quest.
-- `history` already records the mission index, so the quest track and recap work
-  unchanged.
-- The Lady (after the 2nd, 3rd and 4th quests *resolved*) and the Lancelot draws (at
-  the start of rounds 3–5) count rounds, not quest numbers. Their checks must use the
-  number of resolved quests, not `mission`.
-- UI: a quest picker on the leader's phone, and the chosen quest ringed on the TV.
+**Targeting: built.**
+- **Two indexes:**
+  - `GameState.mission` is the **round**: how many quests have been resolved. The
+    Lancelot draws, leader rotation, and the Excalibur and trap logs use it.
+  - `GameState.quest` is the quest the current proposal attempts.
+  - `currentQuest(s)` reads the quest, falling back to the round. Without Targeting the
+    two are always equal.
+- **Choosing:**
+  - `availableQuests` lists the quests the leader may choose: unattempted ones, and the
+    5th only after two successes. Without Targeting, it's just the round's own quest.
+  - `propose` takes the chosen quest and refuses anything else. `teamSize`,
+    `failsNeeded` and the history record all read the chosen quest.
+  - A rejection clears the choice, so the next leader picks again. A forfeit is recorded
+    on the last proposal's quest.
+- **The Lady** counts resolved quests (`history.length` of 2–4), not quest numbers.
+- **UI:**
+  - The leader's phone shows Q1–Q5 buttons with team sizes, two-Fail marks, and
+    unavailable quests greyed out. The team picker sizes itself to the chosen quest.
+  - The TV ringing waits for the choice, and the 5th quest shows "SEALED · 2 WINS"
+    until two others succeed.
+  - Phones show "ROUND n / 5" in the header.
+- **Forced timers** pick a random available quest along with the random team.
 
 **Plot cards**
 - Rules are complete. Deck per player count and draws per round (1/2/3/4) are in §2.8.

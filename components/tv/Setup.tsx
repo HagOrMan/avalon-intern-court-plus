@@ -98,7 +98,15 @@ export function TvSetup({
   const on = (r: RoleKey) => specials.includes(r);
 
   // Customize sub-panels that would overflow the settings column
-  const [panel, setPanel] = useState<"lancelot" | "timers" | null>(null);
+  const [panel, setPanel] = useState<"lancelot" | "timers" | "modules" | null>(null);
+  const modulesSummary = [
+    v.config.ladyOfTheLake && "LADY",
+    v.config.excalibur && "EXCALIBUR",
+    v.config.trapper && "TRAPPER",
+    v.config.targeting && "TARGETING",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   // the two Lancelots share one row (the server keeps them paired)
   const pair: RoleKey[] = ["lancelotGood", "lancelotEvil"];
   const goodOptions = OPTIONAL_ROLES.filter((r) => !isEvil(r) && !pair.includes(r));
@@ -284,7 +292,44 @@ export function TvSetup({
           ))}
         </div>
 
-        {customize && panel === "timers" ? (
+        {customize && panel === "modules" ? (
+          <div style={{ marginTop: 64, display: "grid", gap: 16, font: "500 24px var(--font-body)" }}>
+            {switchRow(
+              "Lady of the Lake",
+              v.config.ladyOfTheLake,
+              "◈ CHECKS BEFORE QUESTS 3–5",
+              "OFF",
+              () => setConfig({ ladyOfTheLake: !v.config.ladyOfTheLake })
+            )}
+            {switchRow(
+              "Excalibur",
+              v.config.excalibur,
+              "⚔ LEADER ARMS A RIDER",
+              "OFF",
+              () => setConfig({ excalibur: !v.config.excalibur })
+            )}
+            {switchRow(
+              "Trapper",
+              v.config.trapper,
+              "⌖ ONE EXTRA RIDER, ONE CARD TRAPPED",
+              "OFF",
+              () => setConfig({ trapper: !v.config.trapper })
+            )}
+            {switchRow(
+              "Targeting",
+              v.config.targeting,
+              "◎ LEADER PICKS THE QUEST",
+              "OFF · QUESTS IN ORDER",
+              () => setConfig({ targeting: !v.config.targeting })
+            )}
+            <div style={{ font: "400 20px/1.5 var(--font-body)", color: "var(--parchment-55)" }}>
+              Targeting: any unattempted quest, but the 5th only after two others succeed.
+            </div>
+            <button onClick={() => setPanel(null)} style={{ ...ghostBtn, justifySelf: "start" }}>
+              ‹ BACK
+            </button>
+          </div>
+        ) : customize && panel === "timers" ? (
           <div style={{ marginTop: 64, display: "grid", gap: 14, font: "500 24px var(--font-body)" }}>
             {TIMER_ROWS.map(([key, label]) => {
               const secs = v.config.timerSeconds[key];
@@ -407,27 +452,7 @@ export function TvSetup({
               "GOOD MUST SUCCEED",
               () => setConfig({ goodMayFail: !v.config.goodMayFail })
             )}
-            {switchRow(
-              "Lady of the Lake",
-              v.config.ladyOfTheLake,
-              "◈ CHECKS BEFORE QUESTS 3–5",
-              "OFF",
-              () => setConfig({ ladyOfTheLake: !v.config.ladyOfTheLake })
-            )}
-            {switchRow(
-              "Excalibur",
-              v.config.excalibur,
-              "⚔ LEADER ARMS A RIDER",
-              "OFF",
-              () => setConfig({ excalibur: !v.config.excalibur })
-            )}
-            {switchRow(
-              "Trapper",
-              v.config.trapper,
-              "⌖ ONE EXTRA RIDER, ONE CARD TRAPPED",
-              "OFF",
-              () => setConfig({ trapper: !v.config.trapper })
-            )}
+            {switchRow("Modules", true, modulesSummary ? `${modulesSummary} ›` : "NONE · EDIT ›", "", () => setPanel("modules"))}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span>Timers</span>
               <span style={{ display: "flex", gap: 10 }}>

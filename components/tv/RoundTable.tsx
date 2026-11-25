@@ -20,7 +20,9 @@ export function QuestTrack({ v }: { v: TvView }) {
     >
       {v.missionSizes.map((size, i) => {
         const res = v.questResults[i];
-        const current = i === v.mission && !res;
+        const current = v.questChosen && i === v.mission && !res;
+        // Targeting: the 5th quest stays sealed until two others succeed
+        const sealed = v.targeting && !res && !v.availableQuests.includes(i) && i === 4;
         const twoFail = v.failsNeeded[i] >= 2;
         if (res && !res.success) {
           return (
@@ -66,9 +68,24 @@ export function QuestTrack({ v }: { v: TvView }) {
               font: "700 36px var(--font-serif)",
               color: res?.success ? "var(--parchment)" : current ? "var(--gold)" : "rgba(237,230,214,0.5)",
               position: "relative",
+              opacity: sealed ? 0.45 : 1,
             }}
           >
             {res?.success ? "◯" : size}
+            {sealed && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -30,
+                  font: "600 14px var(--font-body)",
+                  letterSpacing: "0.1em",
+                  color: "rgba(237,230,214,0.6)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                SEALED · 2 WINS
+              </span>
+            )}
             {twoFail && !res && (
               <span
                 style={{
@@ -216,7 +233,7 @@ export function RoundTable({ v }: { v: TvView }) {
       return (
         <>
           <span style={{ color: "var(--gold)" }}>{v.leaderName}</span> chooses{" "}
-          {v.teamSize} for Mission {v.mission + 1}…
+          {v.targeting ? "a quest and its company…" : `${v.teamSize} for Mission ${v.mission + 1}…`}
         </>
       );
     }

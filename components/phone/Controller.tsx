@@ -83,10 +83,10 @@ function RolePeek({ v }: { v: PlayerView }) {
           )}
           {v.ladyResult && <LadyVerdict result={v.ladyResult} />}
           {v.excaliburSeen.map((e) => (
-            <CardLine key={`x${e.mission}`} label={`EXCALIBUR · MISSION ${e.mission + 1}`} name={e.targetName} card={e.original} />
+            <CardLine key={`x${e.mission}`} label={`EXCALIBUR · ROUND ${e.mission + 1}`} name={e.targetName} card={e.original} />
           ))}
           {v.trapsSeen.map((t) => (
-            <CardLine key={`t${t.mission}`} label={`TRAPPED · MISSION ${t.mission + 1}`} name={t.targetName} card={t.card} />
+            <CardLine key={`t${t.mission}`} label={`TRAPPED · ROUND ${t.mission + 1}`} name={t.targetName} card={t.card} />
           ))}
           <div
             style={{
@@ -109,7 +109,13 @@ function Header({ v }: { v: PlayerView }) {
   return (
     <div className="phone-header" style={{ alignItems: "center" }}>
       <RolePeek v={v} />
-      <span>{v.phase === "gameover" ? "ENDGAME" : `MISSION ${v.mission + 1} / 5`}</span>
+      <span>
+        {v.phase === "gameover"
+          ? "ENDGAME"
+          : v.targeting
+            ? `ROUND ${v.round + 1} / 5`
+            : `MISSION ${v.mission + 1} / 5`}
+      </span>
       <span>{v.phase === "gameover" ? "—" : leaderLabel}</span>
     </div>
   );
@@ -259,7 +265,11 @@ export function Controller({
         return (
           <Waiting
             title={`${v.leaderName} considers the court…`}
-            sub={`They must choose ${v.teamSize} for Mission ${v.mission + 1}.`}
+            sub={
+              v.targeting
+                ? "They choose which quest to attempt, and its company."
+                : `They must choose ${v.teamSize} for Mission ${v.mission + 1}.`
+            }
           />
         );
       case "voting":

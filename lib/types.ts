@@ -84,6 +84,8 @@ export interface Config {
   lancelotEvilKnown: boolean;
   /** the two Lancelots see each other at night */
   lancelotsMeet: boolean;
+  /** Targeting: the leader picks which unattempted quest the team attempts */
+  targeting: boolean;
   /** show a countdown on the TV for each timed decision */
   timers: boolean;
   /** at zero, decide at random for anyone who hasn't; off = the countdown is advisory only */
@@ -117,6 +119,7 @@ export interface LancelotState {
 
 /** One mission's Excalibur outcome. `original` is server only, shown to the wielder alone. */
 export interface ExcaliburUse {
+  /** the round (GameState.mission), not the quest number */
   mission: number;
   holderId: string;
   /** null = the wielder sheathed the sword */
@@ -126,6 +129,7 @@ export interface ExcaliburUse {
 
 /** One mission's trap. `card` (after any Excalibur switch) is server only, shown to the leader alone. */
 export interface TrapRecord {
+  /** the round (GameState.mission), not the quest number */
   mission: number;
   leaderId: string;
   targetId: string;
@@ -193,7 +197,13 @@ export interface GameState {
    * otherwise the first leader is random.
    */
   nextLeader?: { playerId: string; playerCount: number } | null;
-  mission: number; // 0..4
+  /** the round: how many quests have been resolved (0..4). Drives the Lady, Lancelot draws and logs. */
+  mission: number;
+  /**
+   * The quest (0..4) the current proposal attempts; null until a team is proposed. Equal
+   * to `mission` unless Targeting is on. Read it through `currentQuest`.
+   */
+  quest?: number | null;
   rejections: number;
   proposal: string[]; // playerIds
   votes: Record<string, Vote>;

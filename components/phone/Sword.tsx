@@ -171,7 +171,7 @@ export function ExcaliburScreen({ v, act }: { v: PlayerView; act: Act }) {
 }
 
 export function ExcaliburSeenScreen({ v, act }: { v: PlayerView; act: Act }) {
-  const seen = v.excaliburSeen.find((e) => e.mission === v.mission);
+  const seen = v.excaliburSeen.find((e) => e.mission === v.round);
   if (!seen) return null;
   return (
     <SecretScreen
@@ -206,7 +206,7 @@ export function TrapScreen({ v, act }: { v: PlayerView; act: Act }) {
 }
 
 export function TrapSeenScreen({ v, act }: { v: PlayerView; act: Act }) {
-  const seen = v.trapsSeen.find((t) => t.mission === v.mission);
+  const seen = v.trapsSeen.find((t) => t.mission === v.round);
   if (!seen) return null;
   return (
     <SecretScreen

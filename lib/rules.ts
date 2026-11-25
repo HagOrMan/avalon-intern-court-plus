@@ -91,6 +91,7 @@ export function normalizeConfig(c: StoredConfig): Config {
     lancelotForcedCards: c.lancelotForcedCards === true,
     lancelotEvilKnown: c.lancelotEvilKnown !== false,
     lancelotsMeet: c.lancelotsMeet === true,
+    targeting: c.targeting === true,
     timers: c.timers === true,
     timerForce: c.timerForce === true,
     timerSeconds: { ...DEFAULT_TIMER_SECONDS, ...(c.timerSeconds ?? {}) },

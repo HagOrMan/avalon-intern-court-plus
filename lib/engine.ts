@@ -172,6 +172,7 @@ export function updateConfig(s: GameState, cfg: Partial<Config>): GameState {
       lancelotForcedCards: !!(cfg.lancelotForcedCards ?? cur.lancelotForcedCards),
       lancelotEvilKnown: !!(cfg.lancelotEvilKnown ?? cur.lancelotEvilKnown),
       lancelotsMeet: !!(cfg.lancelotsMeet ?? cur.lancelotsMeet),
+      targeting: !!(cfg.targeting ?? cur.targeting),
       timers: !!(cfg.timers ?? cur.timers),
       timerForce: !!(cfg.timerForce ?? cur.timerForce),
       timerSeconds,
@@ -222,6 +223,7 @@ export function beginCourt(s: GameState, rng: () => number = secureRandom): Game
     leaderIndex,
     nextLeader: null,
     mission: 0,
+    quest: null,
     rejections: 0,
     proposal: [],
     votes: {},
@@ -301,9 +303,25 @@ export function leader(s: GameState): Player {
   return s.players[s.leaderIndex % s.players.length];
 }
 
-/** Riders the leader picks: the mission size, plus one for the Trapper to remove. */
-export function teamSize(s: GameState): number {
-  return MISSION_SIZES[s.players.length][s.mission] + (s.config.trapper === true ? 1 : 0);
+/** The quest being attempted: the proposal's choice, else (no Targeting) the round's. */
+export function currentQuest(s: GameState): number {
+  return s.quest ?? s.mission;
+}
+
+/**
+ * Quests the leader may attempt now. Without Targeting, only the round's own. With it,
+ * any quest not yet attempted, and the 5th only once two others have succeeded.
+ */
+export function availableQuests(s: GameState): number[] {
+  if (s.config.targeting !== true) return [s.mission];
+  const attempted = s.history.map((h) => h.mission);
+  const wins = s.history.filter((h) => h.success).length;
+  return [0, 1, 2, 3, 4].filter((q) => !attempted.includes(q) && (q !== 4 || wins >= 2));
+}
+
+/** Riders the leader picks: the quest's size, plus one for the Trapper to remove. */
+export function teamSize(s: GameState, quest = currentQuest(s)): number {
+  return MISSION_SIZES[s.players.length][quest] + (s.config.trapper === true ? 1 : 0);
 }
 
 /** In the unopposed variant, the 5th proposal after 4 rejections skips the vote entirely. */
@@ -315,12 +333,18 @@ export function propose(
   s: GameState,
   playerId: string,
   team: string[],
-  excaliburId: string | null = null
+  excaliburId: string | null = null,
+  questChoice: number | null = null
 ): GameState {
   assert(s.phase === "proposal", "Not accepting proposals");
   assert(leader(s).id === playerId, "Only the leader proposes");
+  const quest = s.config.targeting === true ? questChoice : s.mission;
+  assert(
+    quest !== null && availableQuests(s).includes(quest),
+    "That quest can't be attempted now"
+  );
   const unique = [...new Set(team)];
-  const size = teamSize(s);
+  const size = teamSize(s, quest);
   assert(unique.length === size, `Choose exactly ${size}`);
   assert(
     unique.every((id) => s.players.some((p) => p.id === id)),
@@ -335,6 +359,7 @@ export function propose(
   if (isUnopposedProposal(s)) {
     return {
       ...s,
+      quest,
       proposal: unique,
       excaliburHolderId,
       votes: {},
@@ -344,7 +369,7 @@ export function propose(
       phase: "quest",
     };
   }
-  return { ...s, proposal: unique, excaliburHolderId, votes: {}, voteMeta: null, phase: "voting" };
+  return { ...s, quest, proposal: unique, excaliburHolderId, votes: {}, voteMeta: null, phase: "voting" };
 }
 
 export function vote(s: GameState, playerId: string, v: Vote, now = Date.now()): GameState {
@@ -389,7 +414,7 @@ export function ackVoteReveal(s: GameState, now = Date.now(), force = false): Ga
   }
   if (rejections >= 5 && s.config.rejectionVariant === "forfeit") {
     return closeMission(base, {
-      mission: s.mission,
+      mission: currentQuest(s),
       team: [],
       approve,
       reject,
@@ -404,6 +429,7 @@ export function ackVoteReveal(s: GameState, now = Date.now(), force = false): Ga
     rejections,
     leaderIndex: (s.leaderIndex + 1) % s.players.length,
     proposal: [],
+    quest: null,
     excaliburHolderId: null,
     phase: "proposal",
   };
@@ -448,7 +474,7 @@ function revealQuest(s: GameState, now: number, rng: () => number): GameState {
   const counted = s.proposal.filter((id) => id !== trapped).map((id) => s.questCards[id]);
   const cards = shuffle(counted, rng);
   const fails = cards.filter((c) => c === "fail").length;
-  const success = fails < failsNeeded(s.players.length)[s.mission];
+  const success = fails < failsNeeded(s.players.length)[currentQuest(s)];
   return { ...s, phase: "questReveal", questMeta: { cards, fails, success, revealAt: now } };
 }
 
@@ -528,7 +554,7 @@ export function ackQuestReveal(s: GameState, now = Date.now(), force = false): G
   assert(force || elapsed >= questRevealMs(s.questMeta.cards.length) - 250, "The cards are still turning");
   const { fails, success } = s.questMeta;
   return closeMission(s, {
-    mission: s.mission,
+    mission: currentQuest(s),
     team: s.proposal.map((id) => s.players.find((p) => p.id === id)!.name),
     approve: s.lastVote?.approve ?? 0,
     reject: s.lastVote?.reject ?? 0,
@@ -550,6 +576,7 @@ function closeMission(s: GameState, record: MissionRecord): GameState {
     questMeta: null,
     lastVote: null,
     proposal: [],
+    quest: null,
     excaliburHolderId: null,
   };
   if (losses >= 3) {
@@ -571,9 +598,10 @@ function closeMission(s: GameState, record: MissionRecord): GameState {
       winReason: "Three quests won. With no blade raised against Merlin, the light holds.",
     };
   }
-  // the Lady examines after quests 2, 3 and 4 are resolved, forfeits included.
+  // the Lady examines once the 2nd, 3rd and 4th quests are resolved (counted, not by
+  // quest number, since Targeting can take them in any order), forfeits included.
   // The next round's allegiance card resolves first, so she sees a Lancelot's new side.
-  const ladyTurn = !!s.lady && record.mission >= 1 && record.mission <= 3;
+  const ladyTurn = !!s.lady && history.length >= 2 && history.length <= 4;
   return {
     ...startRound(base, s.mission + 1),
     mission: s.mission + 1,
@@ -767,9 +795,10 @@ function forceDecision(s: GameState, now: number, rng: () => number): GameState 
   switch (s.phase) {
     case "proposal": {
       const lead = leader(s).id;
-      const team = shuffle(s.players, rng).slice(0, teamSize(s)).map((p) => p.id);
+      const quest = pick(availableQuests(s), rng);
+      const team = shuffle(s.players, rng).slice(0, teamSize(s, quest)).map((p) => p.id);
       const sword = s.config.excalibur === true ? pick(team.filter((id) => id !== lead), rng) : null;
-      return propose(s, lead, team, sword);
+      return propose(s, lead, team, sword, quest);
     }
     case "voting": {
       let next = s;

@@ -74,7 +74,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ code: stri
         case "leave":
           return removePlayer(s, player.id);
         case "propose":
-          return propose(s, player.id, body.team ?? [], body.excaliburId ?? null);
+          return propose(s, player.id, body.team ?? [], body.excaliburId ?? null, body.quest ?? null);
         case "vote":
           return vote(s, player.id, body.vote);
         case "questCard":

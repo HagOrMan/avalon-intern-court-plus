@@ -14,7 +14,9 @@ import { ROLES } from "./roles";
 import { MISSION_SIZES, failsNeeded, isEvil, normalizeConfig } from "./rules";
 import {
   allegianceOf,
+  availableQuests,
   currentExcalibur,
+  currentQuest,
   currentTrap,
   isAssassinMark,
   knownEvilTo,
@@ -50,7 +52,19 @@ interface CommonView {
   failsNeeded: number[];
   leaderId: string | null;
   leaderName: string | null;
+  /**
+   * The quest being attempted (0..4). Under Targeting, before a team is proposed, no
+   * quest is chosen yet and this is just the round; check `questChosen`.
+   */
   mission: number;
+  questChosen: boolean;
+  /** the round: how many quests have been resolved (0..4) */
+  round: number;
+  targeting: boolean;
+  /** quests the leader may attempt now (Targeting: unattempted, and the 5th only after two wins) */
+  availableQuests: number[];
+  /** the Trapper adds this many riders to every team */
+  extraRiders: number;
   rejections: number;
   rejectionVariant: RejectionVariant;
   /** public table rule; the phone's quest screen depends on it */
@@ -185,7 +199,12 @@ function common(s: GameState, seen: Record<string, number>, now: number): Common
     failsNeeded: failsNeeded(s.players.length),
     leaderId: lead?.id ?? null,
     leaderName: lead?.name ?? null,
-    mission: s.mission,
+    mission: currentQuest(s),
+    questChosen: s.config.targeting !== true || s.quest != null,
+    round: s.mission,
+    targeting: s.config.targeting === true,
+    availableQuests: started ? availableQuests(s) : [],
+    extraRiders: s.config.trapper === true ? 1 : 0,
     rejections: s.rejections,
     rejectionVariant: s.config.rejectionVariant,
     goodMayFail: s.config.goodMayFail === true,
@@ -207,7 +226,7 @@ function common(s: GameState, seen: Record<string, number>, now: number): Common
         }
       : null,
     teamSize:
-      (MISSION_SIZES[s.players.length] ?? MISSION_SIZES[5])[s.mission] +
+      (MISSION_SIZES[s.players.length] ?? MISSION_SIZES[5])[currentQuest(s)] +
       (s.config.trapper === true ? 1 : 0),
     excaliburOn: s.config.excalibur === true,
     excalibur: (() => {

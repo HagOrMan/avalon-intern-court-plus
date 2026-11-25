@@ -415,5 +415,50 @@ roleOf = await dealAndSwearIn();
   );
 }
 
+/* ---- game 6: Targeting ---- */
+await act(hostToken, "restart");
+await act(hostToken, "updateConfig", {
+  config: { timers: false, targeting: true, specials: ["merlin", "mistress", "mordred", "morgana"] },
+});
+roleOf = await dealAndSwearIn();
+{
+  tv = await readView(code, hostToken);
+  assert(
+    JSON.stringify(tv.availableQuests) === JSON.stringify([0, 1, 2, 3]),
+    "the 5th quest is sealed until two others succeed"
+  );
+  let leaderTok = players.find((p) => p.playerId === tv.leaderId).token;
+  const teamFor = (q) => players.slice(0, tv.missionSizes[q]).map((p) => p.playerId);
+  let refused = false;
+  try { await act(leaderTok, "propose", { team: teamFor(4), quest: 4 }); } catch { refused = true; }
+  assert(refused, "the sealed 5th quest can't be chosen");
+  refused = false;
+  try { await act(leaderTok, "propose", { team: teamFor(2) }); } catch { refused = true; }
+  assert(refused, "a quest must be chosen");
+
+  await act(leaderTok, "propose", { team: teamFor(2), quest: 2 });
+  for (const p of players) await act(p.token, "vote", { vote: "approve" });
+  await sleep(6100);
+  await act(hostToken, "ack");
+  tv = await readView(code, hostToken);
+  assert(tv.phase === "quest" && tv.mission === 2, "the team rides for the chosen quest");
+  for (const id of teamFor(2)) {
+    await act(players.find((p) => p.playerId === id).token, "questCard", { card: "success" });
+  }
+  tv = await readView(code, hostToken);
+  await sleep(1600 + tv.questReveal.cards.length * 1200 + 2100);
+  await act(hostToken, "ack");
+  tv = await readView(code, hostToken);
+  assert(
+    tv.phase === "proposal" && tv.round === 1 && tv.questResults[2]?.success && !tv.questResults[0],
+    "the result lands on the chosen quest, and the round advances"
+  );
+  assert(!tv.availableQuests.includes(2), "an attempted quest can't be attempted again");
+  leaderTok = players.find((p) => p.playerId === tv.leaderId).token;
+  refused = false;
+  try { await act(leaderTok, "propose", { team: teamFor(2), quest: 2 }); } catch { refused = true; }
+  assert(refused, "proposing an attempted quest is refused");
+}
+
 console.log("\nALL PASSED");
 process.exit(0);
