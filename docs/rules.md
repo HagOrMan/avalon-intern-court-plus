@@ -1,6 +1,6 @@
 # Rules: Official Avalon vs. The Intern Court
 
-This compares the official rules of *The Resistance: Avalon* (Indie Boards & Cards, 2012)
+This compares the official rules of _The Resistance: Avalon_ (Indie Boards & Cards, 2012)
 with how this app plays them, and lists every deviation. It's the reference for rule
 changes and extensions. Keep it current when the engine changes.
 
@@ -8,7 +8,7 @@ changes and extensions. Keep it current when the engine changes.
 retail box. Rules for the variants (Wraith, Lady of the Lake, Excalibur, Lancelot,
 Guinevere) come from an online Avalon platform's rules pages, and they're marked as that
 platform's version where it says its version differs from the board game. Trapper comes
-from *The Resistance: Hostile Intent*. Statements about the app cite the code.
+from _The Resistance: Hostile Intent_. Statements about the app cite the code.
 
 ---
 
@@ -18,21 +18,21 @@ from *The Resistance: Hostile Intent*. Statements about the app cite the code.
 
 5–10 players. Allegiance split:
 
-| Players | 5 | 6 | 7 | 8 | 9 | 10 |
-|---|---|---|---|---|---|---|
-| Good | 3 | 4 | 4 | 5 | 6 | 6 |
-| Evil | 2 | 2 | 3 | 3 | 3 | 4 |
+| Players | 5   | 6   | 7   | 8   | 9   | 10  |
+| ------- | --- | --- | --- | --- | --- | --- |
+| Good    | 3   | 4   | 4   | 5   | 6   | 6   |
+| Evil    | 2   | 2   | 3   | 3   | 3   | 4   |
 
 That's Evil = ⌈players / 3⌉ at every official count.
 
 ### 1.2 Quest team sizes
 
-| Players | Q1 | Q2 | Q3 | Q4 | Q5 |
-|---|---|---|---|---|---|
-| 5 | 2 | 3 | 2 | 3 | 3 |
-| 6 | 2 | 3 | 4 | 3 | 4 |
-| 7 | 2 | 3 | 3 | 4\* | 4 |
-| 8–10 | 3 | 4 | 4 | 5\* | 5 |
+| Players | Q1  | Q2  | Q3  | Q4  | Q5  |
+| ------- | --- | --- | --- | --- | --- |
+| 5       | 2   | 3   | 2   | 3   | 3   |
+| 6       | 2   | 3   | 4   | 3   | 4   |
+| 7       | 2   | 3   | 3   | 4\* | 4   |
+| 8–10    | 3   | 4   | 4   | 5\* | 5   |
 
 \* At 7+ players the 4th quest needs **two** Fail cards to fail.
 
@@ -40,28 +40,28 @@ That's Evil = ⌈players / 3⌉ at every official count.
 
 **Standard characters**
 
-| Character | Side | Ability |
-|---|---|---|
-| Merlin | Good | Knows who all the Evil players are at the start, except Mordred. |
-| Assassin | Evil | If Good wins three quests, names one Good player as Merlin. A hit means Evil wins. |
-| Loyal Servant of Arthur | Good | No ability. |
-| Minion of Mordred | Evil | Knows the other Evil players. |
+| Character               | Side | Ability                                                                            |
+| ----------------------- | ---- | ---------------------------------------------------------------------------------- |
+| Merlin                  | Good | Knows who all the Evil players are at the start, except Mordred.                   |
+| Assassin                | Evil | If Good wins three quests, names one Good player as Merlin. A hit means Evil wins. |
+| Loyal Servant of Arthur | Good | No ability.                                                                        |
+| Minion of Mordred       | Evil | Knows the other Evil players.                                                      |
 
 **Optional characters**
 
-| Character | Side | Ability | Helps |
-|---|---|---|---|
-| Percival | Good | Knows who Merlin is. | Good |
-| Mordred | Evil | Hidden from Merlin. | Evil |
-| Morgana | Evil | Appears to Percival as a second Merlin. | Evil |
-| Oberon | Evil | Doesn't see the other Evil players, and they don't see him. **Merlin still sees him.** | Good |
+| Character | Side | Ability                                                                                | Helps |
+| --------- | ---- | -------------------------------------------------------------------------------------- | ----- |
+| Percival  | Good | Knows who Merlin is.                                                                   | Good  |
+| Mordred   | Evil | Hidden from Merlin.                                                                    | Evil  |
+| Morgana   | Evil | Appears to Percival as a second Merlin.                                                | Evil  |
+| Oberon    | Evil | Doesn't see the other Evil players, and they don't see him. **Merlin still sees him.** | Good  |
 
 Deck-building rules:
 
 - **Fixed deck size.** Each special character takes the place of a plain Servant or
   Minion. The Good/Evil split never changes.
 - **Merlin and the Assassin go together.** They are the core of Avalon. Dropping both
-  gives plain *Resistance*-style play.
+  gives plain _Resistance_-style play.
 - **Every role is its own card**, so one player holds exactly one character. The
   Assassin and Oberon are never the same person.
 - **The group chooses the optional characters**, individually or together. The rulebook
@@ -74,13 +74,13 @@ Deck-building rules:
 
 ### 1.4 Night phase (who knows what)
 
-| Viewer | Sees |
-|---|---|
-| Evil (except Oberon) | Each other, Mordred included, Oberon excluded |
-| Oberon | No one |
-| Merlin | All Evil except Mordred (Oberon included) |
-| Percival | Merlin and Morgana, without knowing which is which (only Merlin if Morgana isn't in play) |
-| Servants | No one |
+| Viewer               | Sees                                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| Evil (except Oberon) | Each other, Mordred included, Oberon excluded                                             |
+| Oberon               | No one                                                                                    |
+| Merlin               | All Evil except Mordred (Oberon included)                                                 |
+| Percival             | Merlin and Morgana, without knowing which is which (only Merlin if Morgana isn't in play) |
+| Servants             | No one                                                                                    |
 
 ### 1.5 Round structure
 
@@ -109,7 +109,7 @@ player. If that player is Merlin, Evil wins. Otherwise Good wins.
 
 All built: the Wraith, Lady of the Lake, Excalibur, Trapper, Lancelot + Guinevere,
 Targeting, Plot cards and timers (all settings, §3). Lady, Excalibur, Trapper,
-Targeting and Plot cards sit under Setup → Customize → Modules. Section 5 describes how
+Targeting, and Plot cards sit under Setup → Customize → Modules. Section 5 describes how
 each is implemented.
 
 **Order at a round's start**, when several modules apply:
@@ -144,7 +144,7 @@ setting (§3).
 ### 2.2 Lady of the Lake (official optional rule)
 
 The Lady is a token, not a character, and who holds it is open information. The holder
-privately sees one player's *loyalty* (Good/Evil), never their character.
+privately sees one player's _loyalty_ (Good/Evil), never their character.
 
 Official rules:
 
@@ -228,34 +228,38 @@ Each Lancelot wins with their **current** side. A switch applies to everything: 
 conditions and quest-card rules. The players never swap or show their character cards.
 
 **Official Variant 1: hidden switches**
+
 - Allegiance deck: 5 cards, 3 "No Change" and 2 "Switch Allegiance", shuffled face down.
 - Night: the Evil Lancelot doesn't open his eyes. He holds out his thumb, so **Evil
   knows him, but he doesn't know Evil**.
 - At the beginning of round 3 and of every later round, flip one card. On a Switch, the
   two Lancelots secretly swap sides. Lancelot can switch zero, one or two times.
 - Quest cards follow the player's current side under normal rules. The currently Evil
-  Lancelot *may* play Success.
+  Lancelot _may_ play Success.
 
 **Official Variant 2: switches known in advance**
+
 - Allegiance deck: 7 cards, 5 "No Change" and 2 "Switch Allegiance".
 - Night: the same as Variant 1 (Evil knows the Evil Lancelot).
 - At the start of the game, deal **five** cards face up, in order, above the tableau.
-  Card *k* says whether the Lancelots switch at the start of round *k*.
+  Card _k_ says whether the Lancelots switch at the start of round _k_.
 - **The currently Evil Lancelot must play Fail. The currently Good one must play
   Success.**
 
 **Official Variant 3: Lancelots know each other**
+
 - Night: an extra step lets the two Lancelots see each other. Recommended for larger
   groups only.
 - The rulebook only adds this night step. It doesn't say whether the allegiance deck is
   used.
 
 **Online platform version**
+
 - 5-card deck (2 Switch, 3 blank), drawn before missions 3, 4 and 5, as in Variant 1.
 - Cards are forced by current side, as in Variant 2.
 - **Neither Lancelot learns the other's identity or the Evil team**, and Evil isn't told
   about the Evil Lancelot.
-- Merlin sees the *starting* Evil Lancelot as Evil, and that doesn't update after a
+- Merlin sees the _starting_ Evil Lancelot as Evil, and that doesn't update after a
   switch.
 
 One source says the draw happens "starting after Mission 3". The official text and the
@@ -263,6 +267,7 @@ platform both put the first draw at the start of round 3, which is after mission
 app follows the official text.
 
 **Decided:**
+
 - The variants become **four independent switches**, not presets:
   1. Draw schedule: none / hidden draws (V1, platform) / known in advance (V2).
   2. Forced quest cards by current side (V2, platform).
@@ -271,9 +276,10 @@ app follows the official text.
 
   Setup notes that officially only one variant is used at a time. Combinations (such as
   V3's night step with switching) are allowed.
+
 - Variant 2 keeps the rule as written: five face-up cards for rounds 1–5, so a switch
   can happen at the start of round 1 or 2.
-- Merlin sees the *starting* Evil Lancelot as Evil in every variant, and that doesn't
+- Merlin sees the _starting_ Evil Lancelot as Evil in every variant, and that doesn't
   update after a switch.
 - Lady checks see current loyalty.
 - **A Lancelot never carries the blade.** There's always another Evil role to hold it.
@@ -292,7 +298,7 @@ app follows the official text.
 - **The TV** shows the allegiance cards top-left: five face up for a known schedule, or
   three face down for rounds 3–5 that flip as drawn. It also shows SWITCHED while the
   Lancelots are on their opposite sides.
-- **A Lancelot's phone** shows his *current* side on the role chip and the game-over
+- **A Lancelot's phone** shows his _current_ side on the role chip and the game-over
   plate.
 - **Forced cards:** a forced Lancelot still sees two buttons, and both play his side's
   card.
@@ -308,7 +314,7 @@ Guinevere is Good. She knows which two players are the Lancelots, but not their 
 She is a second assassination target: **if the Assassin names Guinevere, Evil wins**,
 just as for Merlin.
 
-### 2.6 Trapper (from *The Resistance: Hostile Intent*)
+### 2.6 Trapper (from _The Resistance: Hostile Intent_)
 
 - The leader nominates **one more player** than the quest requires, and the vote happens
   as usual.
@@ -342,12 +348,13 @@ needs 4 riders, so they pick 4 and place the round marker on quest 3 before the 
 quest on their phone along with the team (§5). The two-Fail rule follows the quest,
 not the round, including the house two-Fail 5th quest at 13+.
 
-### 2.8 Plot cards (*The Plot Thickens*, from *The Resistance*)
+### 2.8 Plot cards (_The Plot Thickens_, from _The Resistance_)
 
 Built as a setting under Modules (§5 has how it plays in the app). These are the full
 official rules.
 
 **Contents and use**
+
 - 15 Plot cards, each marked for the player counts it's used at. Games of 5–6 players
   use 7 of them; 7+ players use all 15.
 - Plot cards are **not secret**: they stay face up once in play.
@@ -357,17 +364,20 @@ official rules.
   even when his loyalty is revealed.
 
 **Distribution**
+
 - At the start of each round, the leader draws Plot cards: **1** at 5–6 players, **2** at
   7–8, **3** at 9–10 (and **4** at 11+, house rule).
 - The leader hands them to **other players**, never themselves.
 - There are only 5 rounds.
 
 **Card types**
+
 - ★ **Star**: used immediately, then discarded.
 - ⚔ **Sword**: held until used, then discarded (one use).
 - ⛨ **Shield**: stays in play for the rest of the game.
 
 **Timing**
+
 - If several Plot cards could be used at once, the order goes by proximity to the
   leader: the leader first, then clockwise.
 - Each player gets one chance to play any applicable cards. A player who passes can't
@@ -377,33 +387,35 @@ official rules.
 
 **The cards**
 
-| Avalon name | Resistance name | 5–6 | 7+ | Type | Effect |
-|---|---|---|---|---|---|
-| King Returns | No Confidence | 1 | 3 | ⚔ | Cancels an **approved** team and passes the leadership. Using it counts as a failed vote. |
-| Ambush | Keeping a Close Eye on You | 2 | 2 | ⚔ | Secretly look at one played Quest card. It needn't be announced before cards are played, and doesn't change the card. Several cards can be checked in one round, but no player's card can be checked by more than one player in a round. |
-| Lead to Victory | Strong Leader | 2 | 2 | ⚔ | Become the leader before a team is proposed. It must be declared before the leader acts (drawing Plot cards or handing out team cards). After one is played, another can't be played until a vote has been taken. |
-| Charge | Opinion Maker | 1 | 2 | ⛨ | The holder must choose and reveal their vote **first, publicly**, for the rest of the game. If two are in play, those two reveal at the same time. |
-| Restore Your Honor | Take Responsibility | 1 | 1 | ⚔ | The player given it **must** take one held Plot card from another player. |
-| Are You the One | Overheard Conversation | — | 2 | ★ | The player the leader gives it to must look at the Loyalty card of **one adjacent player** (immediate left or right). They pick the neighbour publicly; the result is private. |
-| Show Your True Nature | Open Up | — | 1 | ★ | The player given it must show their Loyalty card to one player of their choice, the leader included. |
-| Show Your Strength | Establish Confidence | — | 1 | ★ | The **leader** must show their Loyalty card to a player of their choice. |
-| We Found You | In the Spotlight | — | 1 | ⚔ | Force one rider to play their Quest card **face up**. It must be declared, with the target, before any rider picks a card. |
+| Avalon name           | Resistance name            | 5–6 | 7+  | Type | Effect                                                                                                                                                                                                                                   |
+| --------------------- | -------------------------- | --- | --- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| King Returns          | No Confidence              | 1   | 3   | ⚔    | Cancels an **approved** team and passes the leadership. Using it counts as a failed vote.                                                                                                                                                |
+| Ambush                | Keeping a Close Eye on You | 2   | 2   | ⚔    | Secretly look at one played Quest card. It needn't be announced before cards are played, and doesn't change the card. Several cards can be checked in one round, but no player's card can be checked by more than one player in a round. |
+| Lead to Victory       | Strong Leader              | 2   | 2   | ⚔    | Become the leader before a team is proposed. It must be declared before the leader acts (drawing Plot cards or handing out team cards). After one is played, another can't be played until a vote has been taken.                        |
+| Charge                | Opinion Maker              | 1   | 2   | ⛨    | The holder must choose and reveal their vote **first, publicly**, for the rest of the game. If two are in play, those two reveal at the same time.                                                                                       |
+| Restore Your Honor    | Take Responsibility        | 1   | 1   | ⚔    | The player given it **must** take one held Plot card from another player.                                                                                                                                                                |
+| Are You the One       | Overheard Conversation     | —   | 2   | ★    | The player the leader gives it to must look at the Loyalty card of **one adjacent player** (immediate left or right). They pick the neighbour publicly; the result is private.                                                           |
+| Show Your True Nature | Open Up                    | —   | 1   | ★    | The player given it must show their Loyalty card to one player of their choice, the leader included.                                                                                                                                     |
+| Show Your Strength    | Establish Confidence       | —   | 1   | ★    | The **leader** must show their Loyalty card to a player of their choice.                                                                                                                                                                 |
+| We Found You          | In the Spotlight           | —   | 1   | ⚔    | Force one rider to play their Quest card **face up**. It must be declared, with the target, before any rider picks a card.                                                                                                               |
 
 The deck is **7 cards at 5–6 players** and **15 at 7+**. The Avalon names are the ones
 the app will use.
 
 Two sources differ on two cards. The table follows the fuller rules text:
+
 - **Restore Your Honor:** "one-time use" in the rules text, "immediately" in the summary.
   Either way it's mandatory.
 - **We Found You:** "another player" in the rules text, "one Quest member" in the
   summary. Only a rider plays a Quest card, so the target has to be a rider. In Avalon, "show their card" means the matching **Loyalty** card,
-never the character card (see above). The online text calls them "Mission cards"; they
-are the Quest cards here.
+  never the character card (see above). The online text calls them "Mission cards"; they
+  are the Quest cards here.
 
 **Not compatible with Trapper.** Plot cards and Trapper can't both be on; Setup will
 enforce this when Plot cards are built.
 
 **Interactions**
+
 - Excalibur resolves before "Keeping a Close Eye on You".
 - Excalibur can't switch a card played face up because of "In the Spotlight".
 
@@ -414,39 +426,39 @@ players, with the full 15-card deck.
 
 ## 3. How the app plays it
 
-| Rule | Where | Matches official? |
-|---|---|---|
-| Good/Evil split, 5–10 players | `evilCount`, `lib/rules.ts` | Yes |
-| Quest team sizes, 5–10 players | `MISSION_SIZES`, `lib/rules.ts` | Yes |
-| Two-Fail 4th quest at 7+ | `failsNeeded` | Yes (plus a two-Fail 5th quest at 13+, §6) |
-| First leader random; passes after every proposal | `firstLeaderIndex`, `ackVoteReveal`, `closeMission` in `lib/engine.ts` | Yes (plus the carry-over between games, D10) |
-| Majority approves, tie rejects | `vote` (`approve > reject`) | Yes |
-| Votes shown openly by name | `tvView.voteReveal` | Yes |
-| Good must play Success | `playQuestCard` | Yes, by default (variant below) |
-| Quest cards shuffled before reveal | `playQuestCard` | Yes |
-| Night-phase knowledge | `knowledgeFor`, `lib/views.ts` | Yes, for every role in §1.4 |
-| Percival sees Merlin + Morgana unordered | `knowledgeFor` (alphabetical) | Yes |
-| Roles in play are public | `rolesInPlay` | Yes |
-| Evil talks before the assassination | Out loud at the table; no in-app channel | Yes (physical) |
-| Lady of the Lake | `ladyExamine`, `ladyPass`, `closeMission`; `components/phone/Lady.tsx` | Yes, when on (§2.2) |
-| Excalibur | `propose`, `wieldExcalibur`, `excaliburDone`; `components/phone/Sword.tsx` | Yes, when on (§2.3) |
-| Trapper | `teamSize`, `trapCard`, `trapDone`, `revealQuest`; `components/phone/Sword.tsx` | Yes, when on (§2.6) |
-| Lancelot | `allegianceOf`, `startRound`, `knowledgeFor`, `knownEvilTo` | Yes, per the chosen switches (§2.4) |
-| Targeting | `availableQuests`, `currentQuest`, `propose` | Yes, when on (§2.7) |
-| Plot cards | `drawPlots`, `plotDeal`, `plotResolve`, `plotPlay`/`plotPass`, `vote` (Charge) | Yes, when on (§2.8) |
+| Rule                                             | Where                                                                           | Matches official?                            |
+| ------------------------------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------- |
+| Good/Evil split, 5–10 players                    | `evilCount`, `lib/rules.ts`                                                     | Yes                                          |
+| Quest team sizes, 5–10 players                   | `MISSION_SIZES`, `lib/rules.ts`                                                 | Yes                                          |
+| Two-Fail 4th quest at 7+                         | `failsNeeded`                                                                   | Yes (plus a two-Fail 5th quest at 13+, §6)   |
+| First leader random; passes after every proposal | `firstLeaderIndex`, `ackVoteReveal`, `closeMission` in `lib/engine.ts`          | Yes (plus the carry-over between games, D10) |
+| Majority approves, tie rejects                   | `vote` (`approve > reject`)                                                     | Yes                                          |
+| Votes shown openly by name                       | `tvView.voteReveal`                                                             | Yes                                          |
+| Good must play Success                           | `playQuestCard`                                                                 | Yes, by default (variant below)              |
+| Quest cards shuffled before reveal               | `playQuestCard`                                                                 | Yes                                          |
+| Night-phase knowledge                            | `knowledgeFor`, `lib/views.ts`                                                  | Yes, for every role in §1.4                  |
+| Percival sees Merlin + Morgana unordered         | `knowledgeFor` (alphabetical)                                                   | Yes                                          |
+| Roles in play are public                         | `rolesInPlay`                                                                   | Yes                                          |
+| Evil talks before the assassination              | Out loud at the table; no in-app channel                                        | Yes (physical)                               |
+| Lady of the Lake                                 | `ladyExamine`, `ladyPass`, `closeMission`; `components/phone/Lady.tsx`          | Yes, when on (§2.2)                          |
+| Excalibur                                        | `propose`, `wieldExcalibur`, `excaliburDone`; `components/phone/Sword.tsx`      | Yes, when on (§2.3)                          |
+| Trapper                                          | `teamSize`, `trapCard`, `trapDone`, `revealQuest`; `components/phone/Sword.tsx` | Yes, when on (§2.6)                          |
+| Lancelot                                         | `allegianceOf`, `startRound`, `knowledgeFor`, `knownEvilTo`                     | Yes, per the chosen switches (§2.4)          |
+| Targeting                                        | `availableQuests`, `currentQuest`, `propose`                                    | Yes, when on (§2.7)                          |
+| Plot cards                                       | `drawPlots`, `plotDeal`, `plotResolve`, `plotPlay`/`plotPass`, `vote` (Charge)  | Yes, when on (§2.8)                          |
 
 ### Role names
 
-| Official | App key | App name |
-|---|---|---|
-| Merlin | `merlin` | Merlin |
-| **Percival** | `mistress` | **Merlin's Mistress**: same ability, renamed in all copy |
-| Loyal Servant | `servant` | Servant of Arthur |
-| Mordred | `mordred` | Mordred |
-| Morgana | `morgana` | Morgana |
-| Assassin | `assassin` | The Assassin |
-| Minion | `minion` | Minion of Mordred |
-| Oberon | `oberon` | Oberon |
+| Official      | App key    | App name                                                 |
+| ------------- | ---------- | -------------------------------------------------------- |
+| Merlin        | `merlin`   | Merlin                                                   |
+| **Percival**  | `mistress` | **Merlin's Mistress**: same ability, renamed in all copy |
+| Loyal Servant | `servant`  | Servant of Arthur                                        |
+| Mordred       | `mordred`  | Mordred                                                  |
+| Morgana       | `morgana`  | Morgana                                                  |
+| Assassin      | `assassin` | The Assassin                                             |
+| Minion        | `minion`   | Minion of Mordred                                        |
+| Oberon        | `oberon`   | Oberon                                                   |
 
 ### Deck building (`OPTIONAL_ROLES`, `deckProblem`, `buildRoleList`)
 
@@ -466,7 +478,7 @@ players, with the full 15-card deck.
 
 ### The Assassin and the blade (`bladeRole`, `config.assassinFlag`)
 
-The Assassin's *ability* (the blade) is separate from the Assassin *card*:
+The Assassin's _ability_ (the blade) is separate from the Assassin _card_:
 
 1. If the host named an Evil special as the blade holder and it's in the deck, it
    carries the blade as an add-on. No Assassin card is dealt.
@@ -480,19 +492,19 @@ target anyone, Evil included, because he doesn't know who they are.
 
 ### Settings (Setup → Customize)
 
-| Setting | Options | Default |
-|---|---|---|
-| Rejection rule | **Quest fails**: the 5th rejection forfeits the quest to Evil, and play moves to the next quest · **Evil wins**: official rule · **Unopposed**: the 5th leader's team rides without a vote | Quest fails |
-| Assassination | On / off (off = three quests decide) | On |
-| Assassin's blade | Assassin card (when a seat is free) or any Evil special in the deck | Assassin |
-| Oberon (shown when he's in the deck) | Merlin sees him / hidden from Merlin too (Wraith) | Merlin sees him |
-| Quest cards | Good must succeed / anyone may fail | Good must succeed |
-| Lady of the Lake | On / off, at any player count | Off |
-| Excalibur | On / off | Off |
-| Trapper | On / off | Off |
-| Targeting | On / off | Off |
-| Plot cards | On / off (switches Trapper off) | Off |
-| Timers | Off / on, a length per decision, and at zero: reminder only / force a random choice | Off; reminder only |
+| Setting                              | Options                                                                                                                                                                                    | Default            |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
+| Rejection rule                       | **Quest fails**: the 5th rejection forfeits the quest to Evil, and play moves to the next quest · **Evil wins**: official rule · **Unopposed**: the 5th leader's team rides without a vote | Quest fails        |
+| Assassination                        | On / off (off = three quests decide)                                                                                                                                                       | On                 |
+| Assassin's blade                     | Assassin card (when a seat is free) or any Evil special in the deck                                                                                                                        | Assassin           |
+| Oberon (shown when he's in the deck) | Merlin sees him / hidden from Merlin too (Wraith)                                                                                                                                          | Merlin sees him    |
+| Quest cards                          | Good must succeed / anyone may fail                                                                                                                                                        | Good must succeed  |
+| Lady of the Lake                     | On / off, at any player count                                                                                                                                                              | Off                |
+| Excalibur                            | On / off                                                                                                                                                                                   | Off                |
+| Trapper                              | On / off                                                                                                                                                                                   | Off                |
+| Targeting                            | On / off                                                                                                                                                                                   | Off                |
+| Plot cards                           | On / off (switches Trapper off)                                                                                                                                                            | Off                |
+| Timers                               | Off / on, a length per decision, and at zero: reminder only / force a random choice                                                                                                        | Off; reminder only |
 
 When Good must succeed, Good riders still get a green and a red button, and **both play
 Success**. Phones look the same to anyone watching (`docs/fairness.md` §6). The server
@@ -502,22 +514,22 @@ also refuses a Fail from Good.
 
 ## 4. Deviations from the official rules
 
-| # | Deviation | Official | App | Where |
-|---|---|---|---|---|
-| D1 | **Player range** | 5–10 | 5–16. Team sizes and the two-Fail 5th quest at 13+ are a house extension; Evil keeps the official ⌈n/3⌉ (see §6) | `MISSION_SIZES`, `failsNeeded`, `evilCount`, `MAX_PLAYERS` |
-| D2 | **Default deck** | The rulebook recommends Merlin + Assassin only, for new groups | Merlin, Percival (Mistress), Mordred, Morgana, plus the Assassin when a seat is free | `DEFAULT_SPECIALS` |
-| D3 | **Blade as an add-on** | The Assassin is always its own card | The blade can ride on another Evil role, including Oberon. At 5–6 with the defaults there's no Assassin card | `bladeRole` |
-| D4 | **Merlin's ally is renamed** | Percival | "Merlin's Mistress", same ability | `lib/roles.ts` |
-| D5 | **5 rejections lose the quest by default** | 5 rejections lose the game | Default: Evil wins that quest. Official and "unopposed" are settings | `ackVoteReveal`, `isUnopposedProposal` |
-| D6 | **Good may fail (setting)** | Never | Off by default | `config.goodMayFail` |
-| D7 | **Wraith (setting)** | Merlin sees Oberon | Optionally hidden from Merlin | `config.oberonHiddenFromMerlin` |
-| D8 | **Assassination can be turned off** | Always on when Merlin and the Assassin are in play | A setting | `config.assassination` |
-| D9 | **Assassin can't target known Evil** | Nothing stops it; it would just be a wasted guess | The engine refuses known-Evil targets. Oberon is targetable unless he holds the blade himself, in which case he can target anyone | `assassinate`; `playerView.assassin` |
-| D10 | **First leader carries over between games** | Random every game | Rotation continues from the previous game if the table is unchanged | `nextLeader`, `docs/fairness.md` §3 |
-| D11 | **Plot cards in Avalon** | A *Resistance* expansion, usable with Avalon's Loyalty cards | Built, with the Avalon card names. House rules: 4 draws at 11+, discards reshuffled when the deck runs out | §2.8, §5 |
-| D13 | **Lancelot variants combine** | One variant at a time | Four independent switches; Setup notes the official rule | `config.lancelot*` |
-| D14 | **Guinevere** | Not in the board game (online platform role) | Good; sees both Lancelots; a second assassination mark | `knowledgeFor`, `isAssassinMark` |
-| D12 | **Lady after a forfeited quest** | A quest is lost to rejections only under the "quest fails" house rule | A forfeited quest counts as resolved, so the Lady check still follows it | `closeMission` |
+| #   | Deviation                                   | Official                                                              | App                                                                                                                               | Where                                                      |
+| --- | ------------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| D1  | **Player range**                            | 5–10                                                                  | 5–16. Team sizes and the two-Fail 5th quest at 13+ are a house extension; Evil keeps the official ⌈n/3⌉ (see §6)                  | `MISSION_SIZES`, `failsNeeded`, `evilCount`, `MAX_PLAYERS` |
+| D2  | **Default deck**                            | The rulebook recommends Merlin + Assassin only, for new groups        | Merlin, Percival (Mistress), Mordred, Morgana, plus the Assassin when a seat is free                                              | `DEFAULT_SPECIALS`                                         |
+| D3  | **Blade as an add-on**                      | The Assassin is always its own card                                   | The blade can ride on another Evil role, including Oberon. At 5–6 with the defaults there's no Assassin card                      | `bladeRole`                                                |
+| D4  | **Merlin's ally is renamed**                | Percival                                                              | "Merlin's Mistress", same ability                                                                                                 | `lib/roles.ts`                                             |
+| D5  | **5 rejections lose the quest by default**  | 5 rejections lose the game                                            | Default: Evil wins that quest. Official and "unopposed" are settings                                                              | `ackVoteReveal`, `isUnopposedProposal`                     |
+| D6  | **Good may fail (setting)**                 | Never                                                                 | Off by default                                                                                                                    | `config.goodMayFail`                                       |
+| D7  | **Wraith (setting)**                        | Merlin sees Oberon                                                    | Optionally hidden from Merlin                                                                                                     | `config.oberonHiddenFromMerlin`                            |
+| D8  | **Assassination can be turned off**         | Always on when Merlin and the Assassin are in play                    | A setting                                                                                                                         | `config.assassination`                                     |
+| D9  | **Assassin can't target known Evil**        | Nothing stops it; it would just be a wasted guess                     | The engine refuses known-Evil targets. Oberon is targetable unless he holds the blade himself, in which case he can target anyone | `assassinate`; `playerView.assassin`                       |
+| D10 | **First leader carries over between games** | Random every game                                                     | Rotation continues from the previous game if the table is unchanged                                                               | `nextLeader`, `docs/fairness.md` §3                        |
+| D11 | **Plot cards in Avalon**                    | A _Resistance_ expansion, usable with Avalon's Loyalty cards          | Built, with the Avalon card names. House rules: 4 draws at 11+, discards reshuffled when the deck runs out                        | §2.8, §5                                                   |
+| D13 | **Lancelot variants combine**               | One variant at a time                                                 | Four independent switches; Setup notes the official rule                                                                          | `config.lancelot*`                                         |
+| D14 | **Guinevere**                               | Not in the board game (online platform role)                          | Good; sees both Lancelots; a second assassination mark                                                                            | `knowledgeFor`, `isAssassinMark`                           |
+| D12 | **Lady after a forfeited quest**            | A quest is lost to rejections only under the "quest fails" house rule | A forfeited quest counts as resolved, so the Lady check still follows it                                                          | `closeMission`                                             |
 
 ---
 
@@ -530,6 +542,7 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 `autoAdvance` case.
 
 **Lady of the Lake: built.**
+
 - `GameState.lady` holds the holder, past holders, and the checks. Each check's loyalty
   is server-only.
 - `closeMission` enters the `lady` phase after quests 2–4. `ladyExamine` moves to
@@ -540,6 +553,7 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
   assassination. Timers (below) will cover this.
 
 **Excalibur and Trapper: built.**
+
 - State:
   - `excaliburHolderId` is set by `propose` and cleared on a rejection or at the end of
     the mission.
@@ -555,6 +569,7 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
   15–16, still within the table.
 
 **Targeting: built.**
+
 - **Two indexes:**
   - `GameState.mission` is the **round**: how many quests have been resolved. The
     Lancelot draws, leader rotation, and the Excalibur and trap logs use it.
@@ -619,6 +634,7 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
   - A forced vote fills Charge holders first.
 
 **Interpretations to know about:**
+
 - "Each round" means each of the five quest rounds, not each proposal. So the draw
   happens once a round, by whoever leads first that round.
 - Restore Your Honor takes only held (⚔) cards, never a Charge in play.
@@ -626,8 +642,9 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
   Show Your Strength.
 
 **Lancelot (+ Guinevere): built.**
-- `isEvil(role)` is a role's *starting* side: seat counting and night sight use it.
-  `allegianceOf(s, playerId)` in `engine.ts` is the *current* side: quest-card rules,
+
+- `isEvil(role)` is a role's _starting_ side: seat counting and night sight use it.
+  `allegianceOf(s, playerId)` in `engine.ts` is the _current_ side: quest-card rules,
   Lady checks, the player's own role chip and the game-over cast use it.
 - `startRound` resolves the round's allegiance card. `playerReady` calls it for round 1,
   and `closeMission` calls it before the Lady's turn.
@@ -650,6 +667,7 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
   reveal beat, the game-over copy).
 
 **Timers: built.**
+
 - **Settings** (Customize → Timers):
   - Off by default. When on, the TV shows a countdown for each decision.
   - Lengths step from 10 seconds to 10 minutes. Defaults: proposals 2 minutes,
@@ -692,35 +710,35 @@ the official numbers behave, what the current house tables do, and a proposal.
 
 ### 6.2 The measure used here
 
-**Clean-team odds**: the chance that a *random* team of the quest's size contains too
+**Clean-team odds**: the chance that a _random_ team of the quest's size contains too
 few Evil players to fail it. It's hypergeometric: C(good, k) / C(n, k), or for a two-Fail
 quest, the chance of at most one Evil player. Lower odds mean Good needs more real
 deduction to field a passing team. This measure ignores Merlin, Percival and voting
-reads, so it's a yardstick for *relative* difficulty, not a balance model.
+reads, so it's a yardstick for _relative_ difficulty, not a balance model.
 
 Official counts (Q4 at 7+ is two-Fail):
 
-| n | Evil | Sizes | Q1 | Q2 | Q3 | Q4 | Q5 |
-|---|---|---|---|---|---|---|---|
-| 5 | 2 | 2-3-2-3-3 | .30 | .10 | .30 | .10 | .10 |
-| 6 | 2 | 2-3-4-3-4 | .40 | .20 | .07 | .20 | .07 |
-| 7 | 3 | 2-3-3-4-4 | .29 | .11 | .11 | .37 | .03 |
-| 8 | 3 | 3-4-4-5-5 | .18 | .07 | .07 | .29 | .02 |
-| 9 | 3 | 3-4-4-5-5 | .24 | .12 | .12 | .41 | .05 |
-| 10 | 4 | 3-4-4-5-5 | .17 | .07 | .07 | .26 | .02 |
+| n   | Evil | Sizes     | Q1  | Q2  | Q3  | Q4  | Q5  |
+| --- | ---- | --------- | --- | --- | --- | --- | --- |
+| 5   | 2    | 2-3-2-3-3 | .30 | .10 | .30 | .10 | .10 |
+| 6   | 2    | 2-3-4-3-4 | .40 | .20 | .07 | .20 | .07 |
+| 7   | 3    | 2-3-3-4-4 | .29 | .11 | .11 | .37 | .03 |
+| 8   | 3    | 3-4-4-5-5 | .18 | .07 | .07 | .29 | .02 |
+| 9   | 3    | 3-4-4-5-5 | .24 | .12 | .12 | .41 | .05 |
+| 10  | 4    | 3-4-4-5-5 | .17 | .07 | .07 | .26 | .02 |
 
 ### 6.3 Why the earlier house tables were replaced
 
 The first house extension used these tables:
 
-| n | Evil | Sizes | Q1 | Q2 | Q3 | Q4 | Q5 |
-|---|---|---|---|---|---|---|---|
-| 11 | 4 | 4-5-5-6-6 | .11 | .05 | .05 | .20 | .015 |
-| 12 | **5** | 4-5-5-6-6 | .07 | .03 | .03 | .12 | .008 |
-| 13 | 5 | 4-5-6-6-7 | .10 | .04 | .02 | .18 | .005 |
-| 14 | 5 | 4-5-6-6-7 | .13 | .06 | .03 | .24 | .010 |
-| 15 | **6** | 5-6-6-7-7 | .04 | .02 | .02 | .08 | .006 |
-| 16 | 6 | 5-6-6-7-7 | .06 | .03 | .03 | .12 | .010 |
+| n   | Evil  | Sizes     | Q1  | Q2  | Q3  | Q4  | Q5   |
+| --- | ----- | --------- | --- | --- | --- | --- | ---- |
+| 11  | 4     | 4-5-5-6-6 | .11 | .05 | .05 | .20 | .015 |
+| 12  | **5** | 4-5-5-6-6 | .07 | .03 | .03 | .12 | .008 |
+| 13  | 5     | 4-5-6-6-7 | .10 | .04 | .02 | .18 | .005 |
+| 14  | 5     | 4-5-6-6-7 | .13 | .06 | .03 | .24 | .010 |
+| 15  | **6** | 5-6-6-7-7 | .04 | .02 | .02 | .08 | .006 |
+| 16  | 6     | 5-6-6-7-7 | .06 | .03 | .03 | .12 | .010 |
 
 Under them, every quest at 11–16 was harder for Good than at official 10 players, and
 Q5 was 2–4× harder. The worst were 12 and 15, which each had one more Evil player than
@@ -736,14 +754,14 @@ the ⌈n/3⌉ pattern.
   quests. Q1–Q3 are sized as for 11–12. The two-Fail quests are sized against 10
   players' Q4 (.26) and Q5 (.02).
 
-| n | Good | Evil | Sizes (\* = two Fails) | Q1 | Q2 | Q3 | Q4 | Q5 |
-|---|---|---|---|---|---|---|---|---|
-| 11 | 7 | 4 | 3-4-5-6\*-6 | .21 | .11 | .05 | .20 | .015 |
-| 12 | 8 | 4 | 4-5-5-6\*-6 | .14 | .07 | .07 | .27 | .030 |
-| 13 | 8 | 5 | 4-5-5-6\*-8\* | .10 | .04 | .04 | .18 | .032 |
-| 14 | 9 | 5 | 4-5-5-6\*-8\* | .13 | .06 | .06 | .24 | .063 |
-| 15 | 10 | 5 | 4-5-5-6\*-9\* | .15 | .08 | .08 | .29 | .047 |
-| 16 | 10 | 6 | 4-5-5-6\*-9\* | .12 | .06 | .06 | .22 | .024 |
+| n   | Good | Evil | Sizes (\* = two Fails) | Q1  | Q2  | Q3  | Q4  | Q5   |
+| --- | ---- | ---- | ---------------------- | --- | --- | --- | --- | ---- |
+| 11  | 7    | 4    | 3-4-5-6\*-6            | .21 | .11 | .05 | .20 | .015 |
+| 12  | 8    | 4    | 4-5-5-6\*-6            | .14 | .07 | .07 | .27 | .030 |
+| 13  | 8    | 5    | 4-5-5-6\*-8\*          | .10 | .04 | .04 | .18 | .032 |
+| 14  | 9    | 5    | 4-5-5-6\*-8\*          | .13 | .06 | .06 | .24 | .063 |
+| 15  | 10   | 5    | 4-5-5-6\*-9\*          | .15 | .08 | .08 | .29 | .047 |
+| 16  | 10   | 6    | 4-5-5-6\*-9\*          | .12 | .06 | .06 | .22 | .024 |
 
 Notes:
 

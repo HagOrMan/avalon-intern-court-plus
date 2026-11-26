@@ -512,5 +512,173 @@ roleOf = await dealAndSwearIn();
   console.log(`  (Plot card this run: ${card.key})`);
 }
 
+/*
+ * ---- game 8: a full 10-player game in its own room ----
+ * Oberon in the deck (so the Assassin takes the 4th Evil seat), Lady of the Lake,
+ * Excalibur and Plot cards on. A driver answers whatever phase comes up, since Plot
+ * cards and seats are random: every team is approved, every Plot window passes, Excalibur
+ * stays sheathed, and Evil fails only where planned. Quest 3 falls to one Fail; quest 4
+ * survives one Fail because it needs two.
+ */
+{
+  const room = await post("/api/rooms");
+  const code10 = room.code;
+  const host10 = room.hostToken;
+  const act10 = (token, action, payload) => post(`/api/room/${code10}/action`, { token, action, ...payload });
+  const view10 = (token) => readView(code10, token);
+  const ps = [];
+  for (const name of ["Ash", "Bea", "Cal", "Dee", "Eli", "Fay", "Gus", "Hal", "Ivy", "Jo"]) {
+    ps.push({ name, ...(await post(`/api/room/${code10}/join`, { name })) });
+  }
+  const tokenOf = (id) => ps.find((p) => p.playerId === id).token;
+
+  await act10(host10, "startSetup");
+  await act10(host10, "updateConfig", {
+    config: {
+      specials: ["merlin", "mistress", "mordred", "morgana", "oberon"],
+      ladyOfTheLake: true,
+      excalibur: true,
+      plotCards: true,
+    },
+  });
+  let t = await view10(host10);
+  assert(
+    t.playerCount === 10 && JSON.stringify(t.missionSizes) === "[3,4,4,5,5]" && t.failsNeeded[3] === 2,
+    "10 players: teams of 3-4-4-5-5, two Fails on the 4th"
+  );
+  await act10(host10, "beginCourt");
+
+  const role = {};
+  for (const p of ps) role[p.playerId] = (await view10(p.token)).role.key;
+  const byRole = (r) => ps.filter((p) => role[p.playerId] === r);
+  const evils10 = ps.filter((p) => EVIL.includes(role[p.playerId]));
+  assert(
+    evils10.length === 4 && byRole("assassin").length === 1 && byRole("oberon").length === 1,
+    "4 Evil at 10: Mordred, Morgana, Oberon and an Assassin card"
+  );
+  const merlin = byRole("merlin")[0];
+  const oberon = byRole("oberon")[0];
+  const mordred = byRole("mordred")[0];
+  const sees = async (p) => (await view10(p.token)).role.knowledge.names;
+  const merlinSees = await sees(merlin);
+  assert(merlinSees.includes(oberon.name) && !merlinSees.includes(mordred.name), "Merlin sees Oberon but not Mordred");
+  assert((await sees(oberon)).length === 0, "Oberon sees no one");
+  assert(!(await sees(mordred)).includes(oberon.name), "Evil doesn't see Oberon");
+
+  for (const p of ps) await act10(p.token, "ready");
+  t = await view10(host10);
+  assert(t.phase === "plotDeal" && t.plot.drawn.length === 3, "the leader draws 3 Plot cards at 10 players");
+
+  const failPlan = [0, 0, 1, 1, 0];
+  const expectWin = [true, true, false, true, true];
+  const failersFor = (q) => evils10.slice(0, failPlan[q]);
+  const resolved = new Set();
+  let ladyChecks = 0;
+  for (let step = 0; step < 300; step++) {
+    t = await view10(host10);
+    if (t.phase === "assassination" || t.phase === "gameover") break;
+    switch (t.phase) {
+      case "plotDeal": {
+        const others = ps.filter((p) => p.playerId !== t.leaderId);
+        const assignments = Object.fromEntries(t.plot.drawn.map((c, i) => [c.id, others[i % others.length].playerId]));
+        await act10(tokenOf(t.leaderId), "plotDeal", { assignments });
+        break;
+      }
+      case "plotResolve": {
+        const actor = t.plot.pending.actorId;
+        const turn = (await view10(tokenOf(actor))).plotTurn;
+        const choice =
+          turn.key === "restoreHonor"
+            ? { targetId: turn.takeable[0].playerId, cardId: turn.takeable[0].cardId }
+            : { targetId: turn.targets[0].id };
+        await act10(tokenOf(actor), "plotResolve", choice);
+        break;
+      }
+      case "plotWindow":
+        await act10(tokenOf(t.plot.window.askingId), "plotPass");
+        break;
+      case "lady": {
+        const holder = tokenOf(t.lady.holderId);
+        const target = (await view10(holder)).ladyTargets[0];
+        await act10(holder, "ladyExamine", { targetId: target.id });
+        const seen = (await view10(holder)).ladyResult;
+        ladyChecks += 1;
+        assert(
+          seen.loyalty === (EVIL.includes(role[target.id]) ? "evil" : "good"),
+          `Lady check ${ladyChecks} shows the true loyalty`
+        );
+        await act10(holder, "ladyPass");
+        break;
+      }
+      case "proposal": {
+        const team = [...failersFor(t.mission)];
+        for (const p of ps) {
+          if (team.length < t.teamSize && !team.includes(p) && !EVIL.includes(role[p.playerId])) team.push(p);
+        }
+        const wielder = team.find((p) => p.playerId !== t.leaderId);
+        await act10(tokenOf(t.leaderId), "propose", {
+          team: team.map((p) => p.playerId),
+          excaliburId: wielder.playerId,
+        });
+        break;
+      }
+      case "voting":
+        // Charge holders first, as the card requires
+        for (const id of [...new Set([...t.plot.charges, ...ps.map((p) => p.playerId)])]) {
+          if (!t.votedIds.includes(id)) await act10(tokenOf(id), "vote", { vote: "approve" });
+        }
+        break;
+      case "voteReveal":
+        await sleep(6100);
+        await act10(host10, "ack");
+        break;
+      case "quest": {
+        const failers = new Set(failersFor(t.mission).map((p) => p.playerId));
+        for (const id of t.proposalIds) {
+          await act10(tokenOf(id), "questCard", { card: failers.has(id) ? "fail" : "success" });
+        }
+        break;
+      }
+      case "excalibur":
+        await act10(tokenOf(t.excalibur.holderId), "excalibur", { targetId: null });
+        break;
+      case "questReveal": {
+        const q = t.mission;
+        assert(
+          t.questReveal.success === expectWin[q],
+          `quest ${q + 1} ${expectWin[q] ? "succeeds" : "fails"} with ${failPlan[q]} Fail`
+        );
+        resolved.add(q);
+        await sleep(1600 + t.questReveal.cards.length * 1200 + 2100);
+        await act10(host10, "ack");
+        break;
+      }
+      default:
+        throw new Error("ASSERT: the 10-player driver hit an unexpected phase: " + t.phase);
+    }
+  }
+  assert(t.phase === "assassination" && resolved.size === 4, "three quests won of four -> assassination");
+  assert(ladyChecks === 2, "the Lady checked after quests 2 and 3, and not after the game was decided");
+
+  const assassin = byRole("assassin")[0];
+  const targets = (await view10(assassin.token)).assassin.targets.map((x) => x.id);
+  assert(
+    targets.includes(oberon.playerId) && !targets.includes(mordred.playerId),
+    "the Assassin may name Oberon but not known Evil"
+  );
+  let refused = false;
+  try { await act10(assassin.token, "assassinate", { targetId: mordred.playerId }); } catch { refused = true; }
+  assert(refused, "naming a known Evil player is refused");
+  const miss = ps.find((p) => !EVIL.includes(role[p.playerId]) && role[p.playerId] !== "merlin");
+  await act10(assassin.token, "assassinate", { targetId: miss.playerId });
+  await sleep(5300);
+  await act10(host10, "ack");
+  t = await view10(host10);
+  assert(
+    t.phase === "gameover" && t.gameover.winner === "good" && t.gameover.recap.length === 4,
+    "the blade misses -> Good wins the 10-player game"
+  );
+}
+
 console.log("\nALL PASSED");
 process.exit(0);

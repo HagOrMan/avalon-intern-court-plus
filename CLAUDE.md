@@ -16,11 +16,18 @@ pnpm build          # next build (also the only type-check — there is no separ
 pnpm lint           # next lint
 ```
 
-There is no unit test runner. `scripts/e2e.mjs` drives a full 5-player game over the HTTP API against a running server: start the app on port 3999 (`pnpm dev -p 3999`), then `node scripts/e2e.mjs` (override target with `BASE=...`). It needs the in-memory or a real store; it reads views by grabbing the first SSE event from the stream endpoint.
+There is no unit test runner. `scripts/e2e.mjs` drives games over the HTTP API against a running server: start the app on port 3999 (`pnpm dev -p 3999`), then `node scripts/e2e.mjs` (override target with `BASE=...`). It needs the in-memory or a real store; it reads views by grabbing the first SSE event from the stream endpoint. Games 1–7 reuse one 5-player room, one module each; game 8 is a full 10-player game in a second room, driven phase by phase. Each run creates 2 rooms, against a limit of `ROOM_CREATE_LIMIT` per IP per 10 minutes.
 
 ## Architecture
 
-**Server-authoritative state machine.** All game state is one `GameState` object (`lib/types.ts`) per 4-letter room code. `lib/engine.ts` holds pure functions `(state, ...args) => newState` for every transition (`beginCourt`, `propose`, `vote`, `playQuestCard`, `assassinate`, the `ack*Reveal`s, `autoAdvance`, …). They throw `GameError` for illegal moves; API routes turn that into a 400 with the message, which the client shows as a toast. Game-tuning constants (mission sizes up to 16 players, evil counts, default specials, reveal durations) live in `lib/rules.ts`; role metadata in `lib/roles.ts`.
+**Server-authoritative state machine.** All game state is one `GameState` object (`lib/types.ts`) per 4-letter room code. `lib/engine.ts` holds pure functions `(state, ...args) => newState` for every transition (`beginCourt`, `propose`, `vote`, `playQuestCard`, `assassinate`, the `ack*Reveal`s, `autoAdvance`, …). They throw `GameError` for illegal moves; API routes turn that into a 400 with the message, which the client shows as a toast. Game-tuning constants (mission sizes up to 16 players, evil counts, two-Fail quests, default specials, timer defaults, Lancelot decks, reveal durations) live in `lib/rules.ts`; role metadata in `lib/roles.ts`; Plot card data in `lib/plots.ts`.
+
+**Rules and modules.** `docs/rules.md` is the source of truth for game rules: the official rules, every module (Lady of the Lake, Excalibur, Trapper, Lancelot + Guinevere, Targeting, Plot cards, timers), how each is implemented, every deviation from the board game, and the decisions behind them. Read it before changing game logic and update it when you do. Invariants that are easy to break:
+- `GameState.mission` is the *round* (quests resolved); `quest` is the quest being attempted (Targeting). Read the quest through `currentQuest`. Round-counted things (Lady, Lancelot draws, Excalibur/trap logs) use `mission`; team size, Fails needed and the history record use the quest.
+- `isEvil(role)` is a role's *starting* side (seat counting, night sight). `allegianceOf(s, id)` is the *current* side (a switched Lancelot): use it for cards, Lady checks and the cast.
+- Every path into a round goes through `enterRound` and every leader's turn through `toLeaderTurn` (Lancelot card → Lady → Lead to Victory → Plot draw → proposal). Every phase change is timestamped by `stampPhase` in `mutateRoom` and the stream's `autoAdvance` path, which timers count from.
+- Config and module state are read through `normalizeConfig` / optional fields, because rooms saved by an older deploy can lack them for up to `ROOM_TTL_SECONDS`.
+- Every `Phase` must be handled by `TvApp`'s and `Controller`'s switches.
 
 **Information hiding is the core invariant.** `state.roles` (playerId → role) and tokens never leave the server. Every client — including the TV — gets a per-viewer filtered projection from `lib/views.ts` (`tvView`, `playerView`), which computes what each role knows (Merlin, Mistress, evil teammates, Oberon/Mordred exceptions). Any new state field must be deliberately exposed (or not) in `views.ts`; never send raw `GameState` to a client.
 
