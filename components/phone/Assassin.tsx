@@ -12,8 +12,13 @@ export function AssassinScreen({
 }) {
   const [marked, setMarked] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
   const targets = v.assassin?.targets ?? [];
   const markedName = targets.find((t) => t.id === marked)?.name;
+  const merlin = v.rolesInPlay.includes("merlin");
+  const guinevere = v.rolesInPlay.includes("guinevere");
+  const title =
+    merlin && guinevere ? "Name Merlin or Guinevere" : guinevere ? "Name Guinevere" : "Name Merlin";
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, paddingTop: 14 }}>
@@ -21,7 +26,7 @@ export function AssassinScreen({
         className="serif"
         style={{ font: "700 28px var(--font-serif)", color: "var(--gold)", textAlign: "center" }}
       >
-        {v.rolesInPlay.includes("guinevere") ? "Name Merlin or Guinevere" : "Name Merlin"}
+        {title}
       </div>
       <div
         style={{
@@ -49,7 +54,7 @@ export function AssassinScreen({
       <button
         className="btn-gold"
         style={{ marginTop: "auto" }}
-        disabled={!marked}
+        disabled={!marked || busy}
         onClick={() => setConfirming(true)}
       >
         Raise the blade
@@ -65,8 +70,10 @@ export function AssassinScreen({
           <button
             className="btn-gold"
             style={{ maxWidth: 280 }}
+            disabled={busy}
             onClick={async () => {
-              await act("assassinate", { targetId: marked });
+              setBusy(true);
+              if (!(await act("assassinate", { targetId: marked }))) setBusy(false);
               setConfirming(false);
             }}
           >

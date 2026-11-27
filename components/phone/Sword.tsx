@@ -87,7 +87,7 @@ function PickScreen({
   confirmLabel,
   confirmSub,
   onConfirm,
-  extra,
+  skip,
 }: {
   title: string;
   sub: string;
@@ -96,11 +96,17 @@ function PickScreen({
   confirmLabel: (name: string) => string;
   confirmSub: string;
   onConfirm: (id: string) => Promise<boolean>;
-  extra?: React.ReactNode;
+  skip?: { label: string; onSkip: () => Promise<boolean> };
 }) {
   const [marked, setMarked] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
   const markedName = rows.find((t) => t.id === marked)?.name ?? "";
+  const send = async (run: () => Promise<boolean>) => {
+    setBusy(true);
+    if (!(await run())) setBusy(false);
+    setConfirming(false);
+  };
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, paddingTop: 14 }}>
       <div className="serif" style={{ font: "700 28px var(--font-serif)", color: "var(--gold)", textAlign: "center" }}>
@@ -123,10 +129,14 @@ function PickScreen({
         ))}
       </div>
       <div style={{ marginTop: "auto", display: "grid", gap: 8 }}>
-        <button className="btn-gold" disabled={!marked} onClick={() => setConfirming(true)}>
+        <button className="btn-gold" disabled={!marked || busy} onClick={() => setConfirming(true)}>
           {marked ? confirmLabel(markedName) : "Choose a rider"}
         </button>
-        {extra}
+        {skip && (
+          <button className="btn-ghost" disabled={busy} onClick={() => send(skip.onSkip)}>
+            {skip.label}
+          </button>
+        )}
       </div>
       {confirming && marked && (
         <div className="pause-overlay" style={{ background: "rgba(7,8,15,0.94)" }}>
@@ -135,10 +145,8 @@ function PickScreen({
           <button
             className="btn-gold"
             style={{ maxWidth: 280 }}
-            onClick={async () => {
-              await onConfirm(marked);
-              setConfirming(false);
-            }}
+            disabled={busy}
+            onClick={() => send(() => onConfirm(marked))}
           >
             {confirmLabel(markedName)}
           </button>
@@ -161,11 +169,7 @@ export function ExcaliburScreen({ v, act }: { v: PlayerView; act: Act }) {
       confirmLabel={(name) => `Switch ${name}'s card`}
       confirmSub="The court will see whose card you switched."
       onConfirm={(id) => act("excalibur", { targetId: id })}
-      extra={
-        <button className="btn-ghost" onClick={() => act("excalibur", { targetId: null })}>
-          Keep the sword sheathed
-        </button>
-      }
+      skip={{ label: "Keep the sword sheathed", onSkip: () => act("excalibur", { targetId: null }) }}
     />
   );
 }

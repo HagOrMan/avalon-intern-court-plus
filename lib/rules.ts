@@ -169,9 +169,11 @@ export function minPlayersFor(specials: RoleKey[]): number | null {
  * The role that carries the assassin's blade, or null for no assassination.
  * A configured add-on holder wins if it's in the deck. Otherwise the Assassin gets its own
  * card if an Evil seat is free, and failing that the blade rides on an Evil special.
+ * The blade needs a mark: Merlin or Guinevere (either alone is enough).
  */
 export function bladeRole(playerCount: number, c: Config): RoleKey | null {
-  if (!c.assassination || !c.specials.includes("merlin")) return null;
+  const mark = c.specials.includes("merlin") || c.specials.includes("guinevere");
+  if (!c.assassination || !mark) return null;
   const evilSpecials = c.specials.filter(isEvil);
   if (c.assassinFlag !== "assassin" && evilSpecials.includes(c.assassinFlag)) return c.assassinFlag;
   if (evilSpecials.length < evilCount(playerCount)) return "assassin";
@@ -234,6 +236,12 @@ export function questRevealMs(cardCount: number): number {
 export const ASSASSIN_REVEAL_MS = 5000;
 /** grace after the scripted beat before the server advances on its own (TV gone, etc.) */
 export const AUTO_ADVANCE_GRACE_MS = 12000;
+
+/**
+ * A client unseen this long counts as disconnected. Presence is refreshed every 5 s by
+ * each open stream, so this must stay well above that.
+ */
+export const PRESENCE_MS = 15000;
 
 export const ROOM_TTL_SECONDS = 12 * 60 * 60;
 

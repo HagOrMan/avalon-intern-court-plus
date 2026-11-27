@@ -47,7 +47,9 @@ function advisory(v: TvView): string {
   const problem = deckProblem(n, v.config.specials);
   if (problem) return problem;
   if (!on("merlin"))
-    return "Without Merlin the court plays blind: his Mistress rests with him, and no blade falls at the end.";
+    return on("guinevere") && v.config.assassination
+      ? "Without Merlin the court plays blind and his Mistress rests; the blade falls for Guinevere alone."
+      : "Without Merlin the court plays blind: his Mistress rests with him, and no blade falls at the end.";
   if (!v.config.assassination)
     return "The blade is sheathed: three quests alone decide it, and Merlin may steer openly.";
   if (on("mordred") && on("morgana") && n === 7)
@@ -300,7 +302,7 @@ export function TvSetup({
             {switchRow(
               "Lady of the Lake",
               v.config.ladyOfTheLake,
-              "◈ CHECKS BEFORE QUESTS 3–5",
+              "◈ CHECKS AFTER QUESTS 2–4",
               "OFF",
               () => setConfig({ ladyOfTheLake: !v.config.ladyOfTheLake })
             )}
@@ -438,7 +440,13 @@ export function TvSetup({
             {switchRow(
               "Assassination",
               v.config.assassination,
-              "✕ EVIL NAMES MERLIN AT THE END",
+              on("merlin")
+                ? on("guinevere")
+                  ? "✕ EVIL NAMES MERLIN OR GUINEVERE"
+                  : "✕ EVIL NAMES MERLIN AT THE END"
+                : on("guinevere")
+                  ? "✕ EVIL NAMES GUINEVERE"
+                  : "✕ ON · NO ONE TO NAME",
               "OFF — QUESTS ALONE DECIDE",
               () => setConfig({ assassination: !v.config.assassination })
             )}

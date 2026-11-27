@@ -13,7 +13,7 @@ import type {
   Vote,
 } from "./types";
 import { ROLES } from "./roles";
-import { MISSION_SIZES, failsNeeded, isEvil, normalizeConfig } from "./rules";
+import { MISSION_SIZES, PRESENCE_MS, failsNeeded, isEvil, normalizeConfig } from "./rules";
 import {
   allegianceOf,
   availableQuests,
@@ -28,9 +28,8 @@ import {
   ladyTargets,
   leader,
   timerEndsAt,
+  turnKey,
 } from "./engine";
-
-const PRESENCE_MS = 15000;
 
 export interface PublicPlayer {
   id: string;
@@ -148,7 +147,8 @@ export interface TvView extends CommonView {
   questReveal: { cards: QuestCard[]; fails: number; success: boolean; revealAt: number } | null;
   assassinReveal: {
     accusedName: string;
-    merlinName: string;
+    /** null when Merlin isn't dealt (the blade still falls for Guinevere) */
+    merlinName: string | null;
     /** null when Guinevere isn't dealt */
     guinevereName: string | null;
     hit: boolean;
@@ -200,6 +200,8 @@ export interface PlayerView extends CommonView {
   plotSeen: { round: number; via: PlotCardKey; subjectName: string; loyalty: Allegiance | null; card: QuestCard | null }[];
   /** the Plot decision this player owes right now, if any */
   plotTurn: {
+    /** unique per decision, even two identical decisions in a row by this player */
+    turnId: string;
     kind: "deal" | "resolve" | "window";
     key?: PlotCardKey;
     /** deal: the drawn cards to hand out */
@@ -343,8 +345,9 @@ function plotTurnFor(s: GameState, playerId: string): PlayerView["plotTurn"] {
   if (!p) return null;
   const nameOf = (id: string) => s.players.find((x) => x.id === id)?.name ?? "?";
   const others = s.players.filter((x) => x.id !== playerId).map((x) => ({ id: x.id, name: x.name }));
+  const turnId = turnKey(s);
   if (s.phase === "plotDeal" && leader(s).id === playerId) {
-    return { kind: "deal", cards: p.drawn.map((c) => ({ id: c.id, key: c.key })), targets: others, takeable: [] };
+    return { turnId, kind: "deal", cards: p.drawn.map((c) => ({ id: c.id, key: c.key })), targets: others, takeable: [] };
   }
   if (s.phase === "plotResolve" && p.pending[0]?.actorId === playerId) {
     const key = p.pending[0].card.key;
@@ -355,13 +358,13 @@ function plotTurnFor(s: GameState, playerId: string): PlayerView["plotTurn"] {
         cardId: t.card.id,
         key: t.card.key,
       }));
-      return { kind: "resolve", key, targets: [], takeable };
+      return { turnId, kind: "resolve", key, targets: [], takeable };
     }
     const targets =
       key === "areYouTheOne"
         ? neighboursOf(s, playerId).map((id) => ({ id, name: nameOf(id) }))
         : others;
-    return { kind: "resolve", key, targets, takeable: [] };
+    return { turnId, kind: "resolve", key, targets, takeable: [] };
   }
   if (s.phase === "plotWindow" && p.window?.queue[0] === playerId) {
     const kind = p.window.kind;
@@ -372,7 +375,7 @@ function plotTurnFor(s: GameState, playerId: string): PlayerView["plotTurn"] {
         : kind === "ambush"
           ? riders.filter((r) => !p.ambushed.includes(r.id))
           : [];
-    return { kind: "window", key: kind, targets, takeable: [] };
+    return { turnId, kind: "window", key: kind, targets, takeable: [] };
   }
   return null;
 }
@@ -412,8 +415,7 @@ export function tvView(s: GameState, seen: Record<string, number>, now = Date.no
       s.phase === "assassinationReveal" && s.assassinTargetId
         ? {
             accusedName: idToName(s.assassinTargetId),
-            merlinName:
-              s.players.find((p) => s.roles[p.id] === "merlin")?.name ?? "no one",
+            merlinName: s.players.find((p) => s.roles[p.id] === "merlin")?.name ?? null,
             guinevereName: s.players.find((p) => s.roles[p.id] === "guinevere")?.name ?? null,
             hit: isAssassinMark(s.roles[s.assassinTargetId]),
             markRole: isAssassinMark(s.roles[s.assassinTargetId]) ? s.roles[s.assassinTargetId] : null,

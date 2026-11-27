@@ -76,6 +76,7 @@ export function createRoom(code: string, hostToken: string, now = Date.now()): G
     excaliburHolderId: null,
     excaliburLog: [],
     trapLog: [],
+    timerPausedAt: null,
     winner: null,
     winReason: null,
     createdAt: now,
@@ -268,6 +269,7 @@ export function beginCourt(s: GameState, rng: () => number = secureRandom): Game
     excaliburHolderId: null,
     excaliburLog: [],
     trapLog: [],
+    timerPausedAt: null,
     winner: null,
     winReason: null,
   };
@@ -369,6 +371,10 @@ export function propose(
 ): GameState {
   assert(s.phase === "proposal", "Not accepting proposals");
   assert(leader(s).id === playerId, "Only the leader proposes");
+  assert(
+    Array.isArray(team) && team.every((id) => typeof id === "string"),
+    "Malformed team"
+  );
   const quest = s.config.targeting === true ? questChoice : s.mission;
   assert(
     quest !== null && availableQuests(s).includes(quest),
@@ -388,9 +394,11 @@ export function propose(
     excaliburHolderId = excaliburId;
   }
   if (isUnopposedProposal(s)) {
-    // no vote is taken, so King Returns has nothing to cancel
+    // no vote is taken, so King Returns has nothing to cancel. The ride stands in for the
+    // vote, so it lifts the Lead to Victory block as a vote does.
     return enterQuest({
       ...s,
+      plot: s.plot ? { ...s.plot, strongLeaderBlocked: false } : s.plot,
       quest,
       proposal: unique,
       excaliburHolderId,
@@ -814,6 +822,10 @@ export function neighboursOf(s: GameState, playerId: string): string[] {
 export function plotDeal(s: GameState, playerId: string, assignments: Record<string, string>): GameState {
   assert(s.phase === "plotDeal" && s.plot, "No Plot cards to hand out");
   assert(leader(s).id === playerId, "Only the leader hands out Plot cards");
+  assert(
+    !!assignments && typeof assignments === "object" && !Array.isArray(assignments),
+    "Hand each Plot card to another player"
+  );
   const p = s.plot;
   const hands = { ...p.hands };
   const charges = [...p.charges];
@@ -1075,11 +1087,17 @@ export function playAgain(s: GameState): GameState {
  * Lazily advance scripted beats if the TV never acked (disconnects, dead room), and,
  * only when the host turned on forced timers, decide at random for anyone who let a
  * timed decision run out.
+ *
+ * `hostPresent` is whether the TV has been seen within PRESENCE_MS. The reveal beats
+ * advance either way (covering a missing TV is their purpose). A running timer pauses
+ * while the TV is gone, since the phones show a fullscreen "court sleeps" overlay and
+ * nobody can act, and resumes with the time it had left when the TV returns.
  */
 export function autoAdvance(
   s: GameState,
   now = Date.now(),
-  rng: () => number = secureRandom
+  rng: () => number = secureRandom,
+  hostPresent = true
 ): GameState | null {
   if (s.phase === "voteReveal" && s.voteMeta) {
     if (now - s.voteMeta.revealAt >= VOTE_REVEAL_MS + AUTO_ADVANCE_GRACE_MS)
@@ -1096,7 +1114,14 @@ export function autoAdvance(
     if (now - s.assassinRevealAt >= ASSASSIN_REVEAL_MS + AUTO_ADVANCE_GRACE_MS)
       return ackAssassinationReveal(s, now, true);
   }
+  // timerEndsAt is null while paused, so the pause is checked before it
+  if (s.timerPausedAt != null) {
+    if (!hostPresent) return null;
+    const started = s.phaseStartedAt ?? now;
+    return { ...s, phaseStartedAt: started + Math.max(0, now - s.timerPausedAt), timerPausedAt: null };
+  }
   const endsAt = timerEndsAt(s);
+  if (endsAt !== null && !hostPresent) return { ...s, timerPausedAt: now };
   if (endsAt !== null && s.config.timerForce === true && now >= endsAt) {
     try {
       return forceDecision(s, now, rng);
@@ -1108,16 +1133,43 @@ export function autoAdvance(
   return null;
 }
 
-/** When the current phase's timer runs out, or null if it isn't timed (or timers are off). */
+/**
+ * When the current decision's timer runs out, or null if it isn't timed, timers are off,
+ * or the timer is paused.
+ */
 export function timerEndsAt(s: GameState): number | null {
   const key = TIMER_FOR_PHASE[s.phase];
-  if (!key || s.config.timers !== true || !s.phaseStartedAt) return null;
+  if (!key || s.config.timers !== true || !s.phaseStartedAt || s.timerPausedAt != null) return null;
   return s.phaseStartedAt + normalizeConfig(s.config).timerSeconds[key] * 1000;
 }
 
-/** Record when a phase began, so its timer counts from there. */
+/**
+ * Identifies the decision the table is waiting on. It changes with the phase, and within
+ * a phase whenever someone new is asked: each holder in a Plot window, and each pending
+ * ★ card (by card id, so two identical cards in a row still differ). Timers restart
+ * whenever it changes, and the phone keys its Plot screens on it.
+ */
+export function turnKey(s: GameState): string {
+  const base = `${s.phase}|${s.mission}|${s.rejections}`;
+  const p = s.plot;
+  if (s.phase === "plotWindow" && p?.window) {
+    const w = p.window;
+    return `${base}|${w.kind}|${w.queue[0]}|${w.queue.length}|${p.events.length}`;
+  }
+  if (s.phase === "plotResolve" && p?.pending.length) {
+    return `${base}|${p.pending[0].card.id}|${p.pending.length}`;
+  }
+  if (s.phase === "plotDeal" && p) {
+    return `${base}|${p.drawn.map((c) => c.id).join(",")}`;
+  }
+  return base;
+}
+
+/** Record when a decision began, so its timer counts from there; a new one is never paused. */
 export function stampPhase(prev: GameState, next: GameState, now: number): GameState {
-  return next.phase === prev.phase ? next : { ...next, phaseStartedAt: now };
+  return turnKey(next) === turnKey(prev)
+    ? next
+    : { ...next, phaseStartedAt: now, timerPausedAt: null };
 }
 
 function pick<T>(items: T[], rng: () => number): T {
@@ -1196,7 +1248,11 @@ function forceDecision(s: GameState, now: number, rng: () => number): GameState 
       return ladyPass(s, s.lady!.holderId);
     case "excalibur": {
       const holder = s.excaliburHolderId!;
-      const choices: (string | null)[] = [null, ...s.proposal.filter((id) => id !== holder)];
+      const spotlit = s.plot?.spotlit ?? [];
+      const choices: (string | null)[] = [
+        null,
+        ...s.proposal.filter((id) => id !== holder && !spotlit.includes(id)),
+      ];
       return wieldExcalibur(s, holder, pick(choices, rng), now, rng);
     }
     case "excaliburReveal":

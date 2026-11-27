@@ -130,7 +130,7 @@ each is implemented.
 **Order at the end of a mission**, when several modules apply:
 
 1. The Lancelot allegiance draw (before rounds 3, 4 and 5).
-2. The Lady of the Lake check (after quests 2, 3 and 4).
+2. The Lady of the Lake check (after the 2nd, 3rd and 4th resolved quest).
 
 The draw resolves first, so a Lady check on the same round sees a Lancelot's new
 loyalty.
@@ -174,6 +174,9 @@ examines someone after quest 3, and can't examine Don.
 - The announcement stays **verbal**; there's no in-app claim.
 - The result shows on the holder's phone only, hidden until held, in neutral colours
   (not Good/Evil colours), and can be recalled later from the ROLE chip.
+- A check follows the 2nd, 3rd and 4th **resolved** quest. Without Targeting that's
+  quests 2–4. With Targeting it counts quests resolved, not quest numbers, and Setup
+  words it that way.
 - A quest lost to five rejections counts as resolved, so a check still follows it.
 
 ### 2.3 Excalibur (promo)
@@ -303,7 +306,8 @@ app follows the official text.
 - **Forced cards:** a forced Lancelot still sees two buttons, and both play his side's
   card.
 - **Assassination:** the blade can't name the Evil Lancelot when Evil saw him at night.
-  Naming Guinevere wins like naming Merlin.
+  Naming Guinevere wins like naming Merlin. With Guinevere in the deck, the
+  assassination happens even when Merlin is resting (§2.5).
 - **Portraits:** Lancelot and Guinevere have none yet. Their plates show their sigils
   (⚜, ♕) until portraits are added to `public/portraits/` and `PORTRAITS` in
   `lib/roles.ts`.
@@ -313,6 +317,11 @@ app follows the official text.
 Guinevere is Good. She knows which two players are the Lancelots, but not their sides.
 She is a second assassination target: **if the Assassin names Guinevere, Evil wins**,
 just as for Merlin.
+
+**In the app:** Guinevere keeps the assassination on her own. If she's in the deck and
+Merlin is resting, three successful quests still go to the blade, and naming her is
+Evil's only winning guess (`bladeRole`). The Assassin's phone and the TV name only the
+marks that were dealt. On a miss with no Merlin dealt, the reveal shows Guinevere.
 
 ### 2.6 Trapper (from _The Resistance: Hostile Intent_)
 
@@ -399,20 +408,21 @@ official rules.
 | Show Your Strength    | Establish Confidence       | —   | 1   | ★    | The **leader** must show their Loyalty card to a player of their choice.                                                                                                                                                                 |
 | We Found You          | In the Spotlight           | —   | 1   | ⚔    | Force one rider to play their Quest card **face up**. It must be declared, with the target, before any rider picks a card.                                                                                                               |
 
-The deck is **7 cards at 5–6 players** and **15 at 7+**. The Avalon names are the ones
-the app will use.
+The deck is **7 cards at 5–6 players** and **15 at 7+**. The app uses the Avalon names.
 
 Two sources differ on two cards. The table follows the fuller rules text:
 
 - **Restore Your Honor:** "one-time use" in the rules text, "immediately" in the summary.
   Either way it's mandatory.
 - **We Found You:** "another player" in the rules text, "one Quest member" in the
-  summary. Only a rider plays a Quest card, so the target has to be a rider. In Avalon, "show their card" means the matching **Loyalty** card,
-  never the character card (see above). The online text calls them "Mission cards"; they
-  are the Quest cards here.
+  summary. Only a rider plays a Quest card, so the target has to be a rider.
 
-**Not compatible with Trapper.** Plot cards and Trapper can't both be on; Setup will
-enforce this when Plot cards are built.
+In Avalon, "show their card" means the matching **Loyalty** card, never the character
+card (see above). The online text calls them "Mission cards"; they are the Quest cards
+here.
+
+**Not compatible with Trapper.** Plot cards and Trapper can't both be on. `updateConfig`
+switches the other off, so the last one switched on wins.
 
 **Interactions**
 
@@ -431,7 +441,7 @@ players, with the full 15-card deck.
 | Good/Evil split, 5–10 players                    | `evilCount`, `lib/rules.ts`                                                     | Yes                                          |
 | Quest team sizes, 5–10 players                   | `MISSION_SIZES`, `lib/rules.ts`                                                 | Yes                                          |
 | Two-Fail 4th quest at 7+                         | `failsNeeded`                                                                   | Yes (plus a two-Fail 5th quest at 13+, §6)   |
-| First leader random; passes after every proposal | `firstLeaderIndex`, `ackVoteReveal`, `closeMission` in `lib/engine.ts`          | Yes (plus the carry-over between games, D10) |
+| First leader random; passes after every proposal | `firstLeaderIndex`, `rejectTeam`, `closeMission` in `lib/engine.ts`          | Yes (plus the carry-over between games, D10) |
 | Majority approves, tie rejects                   | `vote` (`approve > reject`)                                                     | Yes                                          |
 | Votes shown openly by name                       | `tvView.voteReveal`                                                             | Yes                                          |
 | Good must play Success                           | `playQuestCard`                                                                 | Yes, by default (variant below)              |
@@ -465,8 +475,8 @@ players, with the full 15-card deck.
 - **Free choice.** The host picks any of Merlin, Mistress, Mordred, Morgana and Oberon
   at any player count. Servants and Minions fill the rest.
 - **Defaults** (`DEFAULT_SPECIALS`): Merlin, Mistress, Mordred, Morgana.
-- **Mistress needs Merlin.** Resting Merlin also rests the Mistress and removes the
-  assassination.
+- **Mistress needs Merlin.** Resting Merlin also rests the Mistress. It removes the
+  assassination too, unless Guinevere is in the deck (§2.5).
 - **Seat checks.**
   - Players can still join during setup, so a deck larger than the current table is
     allowed.
@@ -477,6 +487,9 @@ players, with the full 15-card deck.
     (`deckProblem`).
 
 ### The Assassin and the blade (`bladeRole`, `config.assassinFlag`)
+
+There's a blade only when the assassination is on and the deck holds a mark: Merlin,
+Guinevere, or both.
 
 The Assassin's _ability_ (the blade) is separate from the Assassin _card_:
 
@@ -495,7 +508,7 @@ target anyone, Evil included, because he doesn't know who they are.
 | Setting                              | Options                                                                                                                                                                                    | Default            |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
 | Rejection rule                       | **Quest fails**: the 5th rejection forfeits the quest to Evil, and play moves to the next quest · **Evil wins**: official rule · **Unopposed**: the 5th leader's team rides without a vote | Quest fails        |
-| Assassination                        | On / off (off = three quests decide)                                                                                                                                                       | On                 |
+| Assassination                        | On / off (off = three quests decide). Needs Merlin or Guinevere in the deck; the blade names whichever were dealt                                                                          | On                 |
 | Assassin's blade                     | Assassin card (when a seat is free) or any Evil special in the deck                                                                                                                        | Assassin           |
 | Oberon (shown when he's in the deck) | Merlin sees him / hidden from Merlin too (Wraith)                                                                                                                                          | Merlin sees him    |
 | Quest cards                          | Good must succeed / anyone may fail                                                                                                                                                        | Good must succeed  |
@@ -527,9 +540,9 @@ also refuses a Fail from Good.
 | D9  | **Assassin can't target known Evil**        | Nothing stops it; it would just be a wasted guess                     | The engine refuses known-Evil targets. Oberon is targetable unless he holds the blade himself, in which case he can target anyone | `assassinate`; `playerView.assassin`                       |
 | D10 | **First leader carries over between games** | Random every game                                                     | Rotation continues from the previous game if the table is unchanged                                                               | `nextLeader`, `docs/fairness.md` §3                        |
 | D11 | **Plot cards in Avalon**                    | A _Resistance_ expansion, usable with Avalon's Loyalty cards          | Built, with the Avalon card names. House rules: 4 draws at 11+, discards reshuffled when the deck runs out                        | §2.8, §5                                                   |
-| D13 | **Lancelot variants combine**               | One variant at a time                                                 | Four independent switches; Setup notes the official rule                                                                          | `config.lancelot*`                                         |
-| D14 | **Guinevere**                               | Not in the board game (online platform role)                          | Good; sees both Lancelots; a second assassination mark                                                                            | `knowledgeFor`, `isAssassinMark`                           |
 | D12 | **Lady after a forfeited quest**            | A quest is lost to rejections only under the "quest fails" house rule | A forfeited quest counts as resolved, so the Lady check still follows it                                                          | `closeMission`                                             |
+| D13 | **Lancelot variants combine**               | One variant at a time                                                 | Four independent switches; Setup notes the official rule                                                                          | `config.lancelot*`                                         |
+| D14 | **Guinevere**                               | Not in the board game (online platform role)                          | Good; sees both Lancelots; a second assassination mark. She keeps the assassination even when Merlin is resting                   | `knowledgeFor`, `isAssassinMark`, `bladeRole`              |
 
 ---
 
@@ -545,12 +558,14 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 
 - `GameState.lady` holds the holder, past holders, and the checks. Each check's loyalty
   is server-only.
-- `closeMission` enters the `lady` phase after quests 2–4. `ladyExamine` moves to
-  `ladyReveal`, and `ladyPass` hands over the token and continues to `proposal`.
+- `closeMission` enters the `lady` phase after the 2nd–4th resolved quest
+  (`history.length` of 2–4). `ladyExamine` moves to `ladyReveal`, and `ladyPass` hands
+  over the token and continues to `proposal`.
 - Views: who holds the Lady, who has held it, and whom they're examining are public.
   Each player's own result appears only in their `playerView.ladyResult`.
-- There's no auto-advance: a holder who disconnects stalls the game, the same as the
-  assassination. Timers (below) will cover this.
+- Only a forced timer advances a stalled holder, and only while the TV is connected
+  (Timers, below). Otherwise a holder who disconnects stalls the game, the same as the
+  assassination.
 
 **Excalibur and Trapper: built.**
 
@@ -563,8 +578,8 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 - Flow: last card → `excalibur` → `excaliburReveal` (only on a switch) → `trap` →
   `trapReveal` → `questReveal`. Each step is skipped when its module is off.
 - `revealQuest` leaves out the trapped card before the shuffle.
-- Phases with no auto-advance: a wielder or leader who disconnects stalls the game until
-  timers exist.
+- Only a forced timer advances a stalled wielder or leader, and only while the TV is
+  connected (Timers, below). Otherwise one who disconnects stalls the game.
 - The Trapper's team is the mission size + 1. The largest is 9 + 1 = 10 riders at
   15–16, still within the table.
 
@@ -608,7 +623,8 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
   - **Lead to Victory:** before every leader's turn (round start and after each
     rejection), except the current leader. Playing it makes the holder leader and closes
     the window. No other can be played until a vote is taken
-    (`strongLeaderBlocked`, cleared in `ackVoteReveal`).
+    (`strongLeaderBlocked`, cleared in `ackVoteReveal`). An unopposed ride counts as the
+    vote: `propose` clears the block on that branch too.
   - **King Returns:** after an approved vote, not after an unopposed team. Playing it
     sends the team through `rejectTeam`, which counts it as a rejected vote: the lead
     passes, and the 5th rejection follows the rejection rule.
@@ -629,6 +645,9 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 - **Exclusive with Trapper:** `updateConfig` turns the other off; the last one switched
   on wins.
 - **Forced timers** (Plot timer, default 1 minute):
+  - Each decision gets a fresh timer: the deal, each pending ★ card, and each holder
+    asked in a window. A holder late in the clockwise order gets the full time, not what
+    the earlier holders left.
   - The deal hands cards out at random, and ★ choices are random and legal.
   - A window passes, the choice that changes nothing.
   - A forced vote fills Charge holders first.
@@ -640,6 +659,9 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
 - Restore Your Honor takes only held (⚔) cards, never a Charge in play.
 - A use-immediately card's choice is made at once by its holder, or by the leader for
   Show Your Strength.
+- Lead to Victory's block lasts "until a vote has been taken". The unopposed ride (a
+  house rejection rule) sends a team without a vote, but it settles the proposal the way
+  a vote would, so it lifts the block too.
 
 **Lancelot (+ Guinevere): built.**
 
@@ -664,7 +686,8 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
   3 is on. The Lancelots see each other when switch 4 is on. Guinevere sees both,
   without sides.
 - Assassination: a hit on Merlin **or Guinevere** wins for Evil (`assassinate`, the
-  reveal beat, the game-over copy).
+  reveal beat, the game-over copy). Guinevere alone keeps the assassination when Merlin
+  is resting (`bladeRole`). The reveal's `merlinName` is null when no Merlin was dealt.
 
 **Timers: built.**
 
@@ -672,7 +695,7 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
   - Off by default. When on, the TV shows a countdown for each decision.
   - Lengths step from 10 seconds to 10 minutes. Defaults: proposals 2 minutes,
     everything else 1 minute (votes, quest cards, the assassination, the Lady,
-    Excalibur, the trap).
+    Excalibur, the trap, Plot cards).
   - The role reveal has **no** timer.
   - **At zero, nothing happens by default.** The game is played in person, and a player
     who idles or disconnects can reconnect. The countdown just reads "TIME".
@@ -686,10 +709,25 @@ placeholder). Any new `GameState` fields need a deliberate exposure decision in
     flip.
   - Assassination: a random legal target.
   - Lady, Excalibur, trap: a random legal choice (Excalibur may also sheathe), then the
-    automatic "continue".
-- **Clock:** `phaseStartedAt` is stamped by `stampPhase` whenever the phase changes,
-  in both write paths (`mutateRoom` and the stream's `autoAdvance`). A module's
-  private "reveal" step shares its choice's timer and restarts it.
+    automatic "continue". Forced Excalibur never picks a rider whose card is face up
+    under We Found You.
+  - Plot cards: see Plot cards, above.
+- **Clock:** `phaseStartedAt` is stamped by `stampPhase` whenever the turn changes, in
+  both write paths (`mutateRoom` and the stream's `autoAdvance`). `turnKey` defines a
+  turn: it changes with the phase, the holder asked in a Plot window, the window's
+  kind, and the pending ★ card. So each holder in a window and each pending ★ card gets
+  a fresh timer. A module's private "reveal" step shares its choice's timer and
+  restarts it.
+- **Pause:** when the TV hasn't been seen for `PRESENCE_MS` (15 seconds, `lib/rules.ts`),
+  phones show "The court sleeps" and can't act, so the timer stops.
+  - The stream passes `hostPresent` to `autoAdvance`. With the host absent and a timer
+    running, it records `timerPausedAt` and forces nothing.
+  - When the TV is back, `phaseStartedAt` moves forward by the time spent paused, so the
+    decision resumes with the time it had left.
+  - A turn that changes while paused starts with a full clock, which pauses again if the
+    TV is still away.
+  - Scripted reveals (votes, quest cards, the assassination) still auto-advance without
+    the TV; that's what their auto-advance is for.
 
 ---
 

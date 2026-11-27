@@ -67,13 +67,21 @@ export function AssassinationQuiet({ v }: { v: TvView }) {
   );
 }
 
-/** The blade falls: Merlin's plate card-flips beside the accused name. */
+/** The blade falls: Merlin's (or Guinevere's) plate card-flips beside the accused name. */
 export function AssassinationReveal({ v, clockOffset }: { v: TvView; clockOffset: number }) {
   const now = useNow(true, 80);
   const r = v.assassinReveal!;
   const t = now + clockOffset - r.revealAt;
   const flipped = t >= 1200;
   const verdict = t >= 2600;
+  // Guinevere alone can be the blade's mark when no Merlin is dealt
+  const plateRole = r.markRole ?? (r.merlinName === null && r.guinevereName !== null ? "guinevere" : "merlin");
+  const truth = [
+    r.merlinName !== null && `Merlin was ${r.merlinName}`,
+    r.guinevereName !== null && `Guinevere ${r.merlinName !== null ? "" : "was "}${r.guinevereName}`,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <div style={{ position: "absolute", inset: 0, background: "#07080f" }}>
@@ -101,7 +109,7 @@ export function AssassinationReveal({ v, clockOffset }: { v: TvView; clockOffset
         <div className="flip-card" style={{ width: 300, height: 440 }}>
           <div className={`flip-inner${flipped ? " flipped" : ""}`}>
             <div className="flip-face" style={{ alignItems: "stretch" }}>
-              <Plate role={r.markRole ?? "merlin"} width={300} showFlavor={false} />
+              <Plate role={plateRole} width={300} showFlavor={false} />
             </div>
             <div
               className="flip-face flip-back"
@@ -131,9 +139,7 @@ export function AssassinationReveal({ v, clockOffset }: { v: TvView; clockOffset
         >
           {r.hit
             ? `◆ ${r.accusedName} was ${r.markRole === "guinevere" ? "Guinevere" : "Merlin"}. The blade lands.`
-            : r.guinevereName
-              ? `◯ Merlin was ${r.merlinName}, Guinevere ${r.guinevereName}. The blade misses.`
-              : `◯ Merlin was ${r.merlinName}. The blade misses.`}
+            : `◯ ${truth ? `${truth}. ` : ""}The blade misses.`}
         </div>
       )}
     </div>

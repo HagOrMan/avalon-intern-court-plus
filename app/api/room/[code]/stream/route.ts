@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { autoAdvance, stampPhase } from "@/lib/engine";
+import { autoAdvance, stampPhase, timerEndsAt } from "@/lib/engine";
+import { PRESENCE_MS } from "@/lib/rules";
 import { getStore } from "@/lib/store";
 import { playerView, tvView } from "@/lib/views";
 
@@ -63,7 +64,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
             version = row.version;
           }
           // lazily advance scripted beats whose TV never acked, and forced timers
-          const advanced = autoAdvance(state, now);
+          let hostPresent = isHost || now - (seen.host ?? 0) < PRESENCE_MS;
+          if (!hostPresent && state.timerPausedAt == null && timerEndsAt(state) !== null) {
+            // about to pause: `seen` can be up to PRESENCE_EVERY_MS stale, so confirm first
+            // rather than pause a court whose TV just reconnected
+            seen = await store.getSeen(code);
+            hostPresent = now - (seen.host ?? 0) < PRESENCE_MS;
+          }
+          const advanced = autoAdvance(state, now, undefined, hostPresent);
           if (advanced) {
             const next = { ...stampPhase(state, advanced, now), updatedAt: now };
             if (await store.update(code, version, next)) {

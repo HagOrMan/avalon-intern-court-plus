@@ -4,6 +4,11 @@ import type { TvView } from "@/lib/views";
 import { useNow } from "./TvApp";
 import { QuestTrack, Candles } from "./RoundTable";
 
+const CARD_W = 190;
+const CARD_H = 270;
+const CARD_GAP = 40;
+const ROW_MAX = 1800;
+
 /** TV-5 · cards fly in face-down, visibly shuffle, flip one at a time on a 1.2s beat. */
 export function QuestReveal({ v, clockOffset }: { v: TvView; clockOffset: number }) {
   const now = useNow(true, 80);
@@ -12,6 +17,13 @@ export function QuestReveal({ v, clockOffset }: { v: TvView; clockOffset: number
   const shuffling = t >= 700 && t < 1500;
   const flippedCount = t < 1600 ? 0 : Math.min(r.cards.length, Math.floor((t - 1600) / 1200) + 1);
   const allFlipped = flippedCount >= r.cards.length;
+  // up to 8 cards keep 190×270; more shrink the cards and gaps together so the row stays
+  // inside ROW_MAX (cards have fixed widths, so the flex row can't shrink them itself)
+  const n = r.cards.length;
+  const scale = Math.min(1, ROW_MAX / (n * CARD_W + (n - 1) * CARD_GAP));
+  const cardW = Math.floor(CARD_W * scale);
+  const cardH = Math.round((cardW * CARD_H) / CARD_W);
+  const gap = Math.floor(CARD_GAP * scale);
 
   return (
     <div style={{ position: "absolute", inset: 0 }}>
@@ -38,7 +50,7 @@ export function QuestReveal({ v, clockOffset }: { v: TvView; clockOffset: number
           right: 0,
           display: "flex",
           justifyContent: "center",
-          gap: 40,
+          gap,
         }}
       >
         {r.cards.map((card, i) => {
@@ -50,7 +62,7 @@ export function QuestReveal({ v, clockOffset }: { v: TvView; clockOffset: number
               className={`card-fly${shuffling ? " shuffling" : ""}`}
               style={{ animationDelay: shuffling ? `${i * 60}ms` : `${i * 100}ms` }}
             >
-              <div className="flip-card" style={{ width: 190, height: 270 }}>
+              <div className="flip-card" style={{ width: cardW, height: cardH }}>
                 <div className={`flip-inner${flipped ? " flipped" : ""}`}>
                   <div
                     className="flip-face"
@@ -64,8 +76,8 @@ export function QuestReveal({ v, clockOffset }: { v: TvView; clockOffset: number
                           }
                     }
                   >
-                    <span style={{ fontSize: 50 }}>{success ? "◯" : "◆"}</span>
-                    <span style={{ font: "600 24px var(--font-body)", letterSpacing: "0.08em" }}>
+                    <span style={{ fontSize: Math.round(50 * scale) }}>{success ? "◯" : "◆"}</span>
+                    <span style={{ font: `600 ${Math.round(24 * scale)}px var(--font-body)`, letterSpacing: "0.08em" }}>
                       {success ? "SUCCESS" : "FAIL"}
                     </span>
                   </div>
@@ -77,7 +89,7 @@ export function QuestReveal({ v, clockOffset }: { v: TvView; clockOffset: number
                       boxShadow: "0 0 24px rgba(201,162,75,0.35)",
                     }}
                   >
-                    <span className="serif" style={{ font: "700 56px var(--font-serif)", color: "var(--gold)" }}>
+                    <span className="serif" style={{ font: `700 ${Math.round(56 * scale)}px var(--font-serif)`, color: "var(--gold)" }}>
                       ✦
                     </span>
                   </div>

@@ -171,6 +171,12 @@ export function Waiting({
   );
 }
 
+function storeRead(key: string, n: number) {
+  try {
+    localStorage.setItem(key, String(n));
+  } catch {}
+}
+
 export function Controller({
   code,
   token,
@@ -183,9 +189,34 @@ export function Controller({
   const { view: v, fatal, toast, act } = useRoom<PlayerView>(code, token);
   const [showLeave, setShowLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  // private Plot results read so far; a newer one shows a nudge to hold the ROLE chip
-  const [plotRead, setPlotRead] = useState(0);
-  const unreadPlot = (v?.plotSeen.length ?? 0) > plotRead;
+  // private Plot results read so far (null until loaded); a newer one shows a nudge to
+  // hold the ROLE chip. Persisted so a reload doesn't bring the nudge back.
+  const [plotRead, setPlotRead] = useState<number | null>(null);
+  const readKey = v ? `court:plotRead:${code}:${v.me.id}` : null;
+  const seenCount = v?.plotSeen.length ?? 0;
+  const unreadPlot = plotRead !== null && seenCount > plotRead;
+
+  useEffect(() => {
+    if (!readKey) return;
+    let n = 0;
+    try {
+      n = Number(localStorage.getItem(readKey)) || 0;
+    } catch {}
+    setPlotRead(n);
+  }, [readKey]);
+
+  // plotSeen empties when a new game starts; follow it down so the next result nudges again
+  useEffect(() => {
+    if (readKey && plotRead !== null && seenCount < plotRead) {
+      setPlotRead(seenCount);
+      storeRead(readKey, seenCount);
+    }
+  }, [readKey, plotRead, seenCount]);
+
+  const markPlotRead = () => {
+    setPlotRead(seenCount);
+    if (readKey) storeRead(readKey, seenCount);
+  };
 
   const leave = async () => {
     setLeaving(true);
@@ -264,7 +295,9 @@ export function Controller({
       case "reveal":
         return <RoleReveal v={v} act={act} />;
       case "plotDeal":
-        if (v.plotTurn?.kind === "deal") return <PlotDealScreen v={v} act={act} />;
+        // Plot screens are keyed per decision: a player who owes two in a row must get
+        // fresh state, since each screen stays busy after a successful send
+        if (v.plotTurn?.kind === "deal") return <PlotDealScreen key={v.plotTurn.turnId} v={v} act={act} />;
         return (
           <Waiting
             title={`${v.leaderName} draws Plot cards`}
@@ -272,7 +305,7 @@ export function Controller({
           />
         );
       case "plotResolve":
-        if (v.plotTurn?.kind === "resolve") return <PlotResolveScreen v={v} act={act} />;
+        if (v.plotTurn?.kind === "resolve") return <PlotResolveScreen key={v.plotTurn.turnId} v={v} act={act} />;
         return (
           <Waiting
             title={`${v.plot?.pending?.actorName} resolves ${v.plot?.pending ? PLOT_INFO[v.plot.pending.key].name : "a Plot card"}`}
@@ -280,7 +313,7 @@ export function Controller({
           />
         );
       case "plotWindow":
-        if (v.plotTurn?.kind === "window") return <PlotWindowScreen v={v} act={act} />;
+        if (v.plotTurn?.kind === "window") return <PlotWindowScreen key={v.plotTurn.turnId} v={v} act={act} />;
         return (
           <Waiting
             title={`${v.plot?.window?.askingName} may play ${v.plot?.window ? PLOT_INFO[v.plot.window.kind].name : "a Plot card"}…`}
@@ -415,7 +448,7 @@ export function Controller({
 
   return (
     <main className="phone-screen">
-      <Header v={v} onPeek={() => setPlotRead(v.plotSeen.length)} />
+      <Header v={v} onPeek={markPlotRead} />
       {unreadPlot && (
         <div style={{ font: "600 11px var(--font-body)", letterSpacing: "0.12em", color: "var(--gold)", textAlign: "center", padding: "6px 0" }}>
           ◉ SOMETHING FOR YOUR EYES ONLY · HOLD ROLE TO READ

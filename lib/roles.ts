@@ -141,7 +141,7 @@ export const ROLES: Record<RoleKey, RoleInfo> = {
     flavor: "She knows both Lancelots. Not which is which.",
     allegiance: "good",
     shared: false,
-    coaching: "You see both Lancelots but not their hearts. The blade may seek you as surely as Merlin.",
+    coaching: "You see both Lancelots but not their hearts. If the blade finds you, Evil wins.",
   },
 };
 

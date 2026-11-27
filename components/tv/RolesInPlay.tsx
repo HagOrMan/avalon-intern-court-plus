@@ -5,6 +5,8 @@ import type { RoleKey } from "@/lib/types";
 import { Plate } from "@/components/Plate";
 import { ROLE_ORDER } from "@/lib/roles";
 
+const ROW_MAX = 1800;
+
 /** Pre-game card: portraits only, no names — the court learns the faces of the roles. */
 export function RolesInPlay({ v }: { v: TvView }) {
   const sworn = v.players.filter((p) => p.ready).length;
@@ -16,7 +18,11 @@ export function RolesInPlay({ v }: { v: TvView }) {
   const counted = new Map<RoleKey, number>();
   for (const r of roles) counted.set(r, (counted.get(r) ?? 0) + 1);
   const entries = [...counted.entries()];
-  const width = entries.length > 6 ? 208 : 232;
+  // One row that fits ROW_MAX: plates have fixed widths, so the flex row can't shrink them.
+  // Two rows don't fit above the awaiting list (up to 16 names) at any legible width.
+  const n = entries.length;
+  const gap = n > 8 ? 20 : 28;
+  const width = Math.min(n > 6 ? 208 : 232, Math.floor((ROW_MAX - (n - 1) * gap) / n));
 
   return (
     <div style={{ position: "absolute", inset: 0 }}>
@@ -46,7 +52,7 @@ export function RolesInPlay({ v }: { v: TvView }) {
           display: "flex",
           justifyContent: "center",
           alignItems: "stretch",
-          gap: 28,
+          gap,
         }}
       >
         {entries.map(([role, count]) => (

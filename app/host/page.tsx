@@ -30,6 +30,27 @@ export default function HostPage() {
   };
 
   useEffect(() => {
+    // ?code=…&hostToken=… hands this screen a room created elsewhere (scripts/playtest.mjs).
+    // The token is a host credential, so it leaves the address bar before anyone copies the link.
+    const params = new URLSearchParams(window.location.search);
+    const urlCode = params.get("code");
+    const urlToken = params.get("hostToken");
+    if (urlCode && urlToken) {
+      const handed = { code: urlCode.toUpperCase(), hostToken: urlToken };
+      try {
+        localStorage.setItem("court:host", JSON.stringify(handed));
+      } catch {}
+      params.delete("code");
+      params.delete("hostToken");
+      const rest = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash
+      );
+      setCreds(handed);
+      return;
+    }
     try {
       const raw = localStorage.getItem("court:host");
       if (raw) {

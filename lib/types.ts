@@ -258,8 +258,13 @@ export interface GameState {
   code: string;
   hostToken: string;
   phase: Phase;
-  /** server time the current phase began; stamped by `stampPhase` on every phase change */
+  /** server time the current decision began; stamped by `stampPhase` whenever `turnKey` changes */
   phaseStartedAt?: number;
+  /**
+   * Set while the current timer is paused because the TV is gone; `autoAdvance` shifts
+   * `phaseStartedAt` forward by the paused time when the TV returns. Server only.
+   */
+  timerPausedAt?: number | null;
   players: Player[];
   config: Config;
   /** playerId -> role. Server only — stripped from every client view. */

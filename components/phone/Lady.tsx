@@ -13,6 +13,7 @@ export function LadyChooseScreen({
 }) {
   const [marked, setMarked] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
   const targets = v.ladyTargets ?? [];
   const markedName = targets.find((t) => t.id === marked)?.name;
 
@@ -37,7 +38,7 @@ export function LadyChooseScreen({
           </button>
         ))}
       </div>
-      <button className="btn-gold" style={{ marginTop: "auto" }} disabled={!marked} onClick={() => setConfirming(true)}>
+      <button className="btn-gold" style={{ marginTop: "auto" }} disabled={!marked || busy} onClick={() => setConfirming(true)}>
         Look into their heart
       </button>
       {confirming && marked && (
@@ -49,8 +50,10 @@ export function LadyChooseScreen({
           <button
             className="btn-gold"
             style={{ maxWidth: 280 }}
+            disabled={busy}
             onClick={async () => {
-              await act("ladyExamine", { targetId: marked });
+              setBusy(true);
+              if (!(await act("ladyExamine", { targetId: marked }))) setBusy(false);
               setConfirming(false);
             }}
           >
