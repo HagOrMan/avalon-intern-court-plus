@@ -217,11 +217,15 @@ function SeatPlots({ v, playerId, small }: { v: TvView; playerId: string; small:
   const size = small ? 13 : 15;
   return (
     <div style={{ display: "grid", gap: 2, font: `600 ${size}px var(--font-body)`, letterSpacing: "0.06em", color: "var(--parchment-75)" }}>
-      {cards.map((c) => (
-        <div key={c.id}>
-          {PLOT_SIGIL[PLOT_INFO[c.key].type]} {PLOT_INFO[c.key].name.toUpperCase()}
+      {cards.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "2px 10px" }}>
+          {cards.map((c) => (
+            <span key={c.id} style={{ whiteSpace: "nowrap" }}>
+              {PLOT_SIGIL[PLOT_INFO[c.key].type]} {PLOT_INFO[c.key].name.toUpperCase()}
+            </span>
+          ))}
         </div>
-      ))}
+      )}
       {charge && (
         <div style={{ color: "var(--gold)" }}>
           ⛨ CHARGE{chargeVote ? (chargeVote === "approve" ? " · ◯ APPROVE" : " · ◆ REJECT") : ""}
@@ -236,22 +240,67 @@ function SeatPlots({ v, playerId, small }: { v: TvView; playerId: string; small:
   );
 }
 
+/**
+ * Seats sit on a stadium-shaped track: straight top and bottom rows with rounded ends. It
+ * uses the stage's width rather than its height, so the bottom row stays above the banner
+ * and the top row below the quest track. `top`/`bottom` are crest centres.
+ */
+const TRACK = { cx: 960, top: 240, bottom: 665, halfStraight: 560, endRadius: 230 };
+/** Inside the track, below the top row's cards and above the bottom row's crests. */
+const CENTRE = { left: 360, right: 360, top: 420, height: 200 };
+/** Longest banner, in characters, that stays on one line at the banner's size. */
+const BANNER_CHARS = 72;
+const SEAT_W = 220;
+
+/**
+ * Crest centres spaced evenly by distance along the track, clockwise from top centre
+ * (seat 0). Even spacing by distance, not angle, keeps the rounded ends from bunching.
+ */
+function seatPoints(n: number): { x: number; y: number }[] {
+  const { cx, top, bottom, halfStraight: s, endRadius: e } = TRACK;
+  const cy = (top + bottom) / 2;
+  const h = (bottom - top) / 2;
+  const rad = (deg: number) => (deg * Math.PI) / 180;
+  const path: { x: number; y: number }[] = [];
+  for (let x = cx; x < cx + s; x += 4) path.push({ x, y: top });
+  for (let a = -90; a < 90; a++) path.push({ x: cx + s + e * Math.cos(rad(a)), y: cy + h * Math.sin(rad(a)) });
+  for (let x = cx + s; x > cx - s; x -= 4) path.push({ x, y: bottom });
+  for (let a = 90; a < 270; a++) path.push({ x: cx - s + e * Math.cos(rad(a)), y: cy + h * Math.sin(rad(a)) });
+  for (let x = cx - s; x <= cx; x += 4) path.push({ x, y: top });
+  const dist = [0];
+  for (let i = 1; i < path.length; i++) {
+    dist.push(dist[i - 1] + Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y));
+  }
+  const total = dist[dist.length - 1];
+  const points: { x: number; y: number }[] = [];
+  let j = 0;
+  for (let k = 0; k < n; k++) {
+    const d = (k * total) / n;
+    while (j < dist.length - 1 && dist[j + 1] <= d) j++;
+    points.push(path[j]);
+  }
+  return points;
+}
+
+function joinNames(names: string[]): string {
+  return names.length === 2 ? names.join(" and ") : names.join(", ");
+}
+
 /** TV-3 · the persistent round table. */
 export function RoundTable({ v }: { v: TvView }) {
   const players = [...v.players].sort((a, b) => a.seat - b.seat);
   const n = players.length;
-  const cx = 960;
-  const cy = 590;
   const crowded = n > 10;
-  const rx = crowded ? 560 : 430;
-  const ry = crowded ? 310 : 300;
+  const crest = crowded ? 56 : 72;
+  const points = seatPoints(n);
 
   const banner = () => {
     if (v.phase === "plotDeal" && v.plot) {
+      const k = v.plot.drawn.length;
       return (
         <>
-          <span style={{ color: "var(--gold)" }}>{v.leaderName}</span> draws{" "}
-          {v.plot.drawn.map((c) => PLOT_INFO[c.key].name).join(", ")}
+          <span style={{ color: "var(--gold)" }}>{v.leaderName}</span> draws {k} Plot card
+          {k === 1 ? "" : "s"}
         </>
       );
     }
@@ -295,23 +344,30 @@ export function RoundTable({ v }: { v: TvView }) {
         </>
       );
     }
+    // a company too long for one line is counted instead; its riders are lit on the table
     if (v.phase === "voting") {
-      const list = v.proposalNames;
-      const names = list.length === 2 ? list.join(" and ") : list.join(", ");
+      const tail = ` for Mission ${v.mission + 1} — the court votes`;
+      const listed = joinNames(v.proposalNames);
+      const company =
+        `${v.leaderName} proposes ${listed}${tail}`.length <= BANNER_CHARS
+          ? listed
+          : `${v.proposalNames.length} riders`;
       return (
         <>
-          {v.leaderName} proposes <span style={{ color: "var(--gold)" }}>{names}</span> for
-          Mission {v.mission + 1} — the court votes
+          {v.leaderName} proposes <span style={{ color: "var(--gold)" }}>{company}</span>
+          {tail}
         </>
       );
     }
     if (v.phase === "quest") {
-      const list = v.quest?.teamNames ?? [];
-      const names = list.length === 2 ? list.join(" and ") : list.join(", ");
+      const names = v.quest?.teamNames ?? [];
+      const tail = ` ride for Mission ${v.mission + 1} · ${v.quest?.cardsIn} of ${v.quest?.cardsNeeded} cards cast`;
+      const listed = joinNames(names);
+      const company = `${listed}${tail}`.length <= BANNER_CHARS ? listed : `${names.length} riders`;
       return (
         <>
-          <span style={{ color: "var(--gold)" }}>{names}</span> ride for Mission {v.mission + 1}{" "}
-          · {v.quest?.cardsIn} of {v.quest?.cardsNeeded} cards cast
+          <span style={{ color: "var(--gold)" }}>{company}</span>
+          {tail}
         </>
       );
     }
@@ -356,66 +412,80 @@ export function RoundTable({ v }: { v: TvView }) {
       <div
         style={{
           position: "absolute",
-          left: cx - 340,
-          top: cy - 245,
-          width: 680,
-          height: 490,
+          left: CENTRE.left - 30,
+          right: CENTRE.right - 30,
+          top: CENTRE.top - 25,
+          height: CENTRE.height + 30,
           border: "1px solid rgba(201,162,75,0.2)",
-          borderRadius: "50%",
+          borderRadius: 9999,
         }}
       />
       {players.map((p, i) => {
-        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
-        const x = cx + rx * Math.cos(angle);
-        const y = cy + ry * Math.sin(angle);
+        const { x, y } = points[i];
         const isLeader = p.id === v.leaderId;
         const chosen = v.proposalIds.includes(p.id);
         const voted = v.votedIds.includes(p.id);
+        // anchored at the crest, not centred, so a seat's cards and markers grow downward
+        // and the crowns and crests of every seat stay on the track
         return (
           <div
             key={p.id}
             style={{
               position: "absolute",
-              left: x,
-              top: y,
-              transform: "translate(-50%, -50%)",
+              left: x - SEAT_W / 2,
+              top: y - crest / 2,
+              width: SEAT_W,
               textAlign: "center",
               zIndex: 2,
               opacity: p.connected ? 1 : 0.45,
             }}
           >
-            {isLeader && (
-              <div className="flame" style={{ fontSize: crowded ? 28 : 34, color: "var(--gold)", lineHeight: 1.1 }}>
-                ♛
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+              <div style={{ position: "relative" }}>
+                {isLeader && (
+                  <div
+                    className="flame"
+                    style={{
+                      position: "absolute",
+                      bottom: "100%",
+                      left: 0,
+                      right: 0,
+                      fontSize: crowded ? 28 : 34,
+                      color: "var(--gold)",
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    ♛
+                  </div>
+                )}
+                <Crest name={p.name} size={crest} lifted={chosen} />
+                {voted && (
+                  <div
+                    className="rise-in"
+                    style={{
+                      position: "absolute",
+                      right: -30,
+                      bottom: -6,
+                      width: 40,
+                      height: 54,
+                      background: "linear-gradient(135deg, #191d33, #10131f)",
+                      border: "1px solid rgba(201,162,75,0.8)",
+                      boxShadow: "0 0 16px rgba(201,162,75,0.3)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span className="serif" style={{ font: "700 20px var(--font-serif)", color: "var(--gold)" }}>✦</span>
+                  </div>
+                )}
               </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 8, position: "relative" }}>
-              <Crest name={p.name} size={crowded ? 56 : 72} lifted={chosen} />
-              {voted && (
-                <div
-                  className="rise-in"
-                  style={{
-                    position: "absolute",
-                    right: -30,
-                    bottom: -6,
-                    width: 40,
-                    height: 54,
-                    background: "linear-gradient(135deg, #191d33, #10131f)",
-                    border: "1px solid rgba(201,162,75,0.8)",
-                    boxShadow: "0 0 16px rgba(201,162,75,0.3)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <span className="serif" style={{ font: "700 20px var(--font-serif)", color: "var(--gold)" }}>✦</span>
-                </div>
-              )}
             </div>
             <div
               style={{
                 font: `600 ${crowded ? 20 : 26}px var(--font-body)`,
                 color: chosen || isLeader ? "var(--gold)" : "var(--parchment)",
+                whiteSpace: "nowrap",
               }}
             >
               {p.name}
@@ -444,21 +514,34 @@ export function RoundTable({ v }: { v: TvView }) {
           </div>
         );
       })}
-      {v.plot?.lastEvent && (
+      {v.plot && (
         <div
           style={{
             position: "absolute",
-            bottom: 132,
-            left: 0,
-            right: 0,
+            left: CENTRE.left,
+            right: CENTRE.right,
+            top: CENTRE.top,
+            height: CENTRE.height,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 14,
             textAlign: "center",
-            font: "500 24px var(--font-body)",
-            color: "rgba(237,230,214,0.6)",
           }}
         >
-          {v.plot.lastEvent.kind === "given"
-            ? `${v.plot.lastEvent.byName} handed ${PLOT_INFO[v.plot.lastEvent.key].name} to ${v.plot.lastEvent.targetName}`
-            : `${v.plot.lastEvent.byName} played ${PLOT_INFO[v.plot.lastEvent.key].name}${v.plot.lastEvent.targetName ? ` · ${v.plot.lastEvent.targetName}` : ""}`}
+          {v.phase === "plotDeal" && v.plot.drawn.length > 0 && (
+            <div className="serif" style={{ font: "600 34px/1.3 var(--font-serif)", color: "var(--gold)" }}>
+              {v.plot.drawn.map((c) => `${PLOT_SIGIL[PLOT_INFO[c.key].type]} ${PLOT_INFO[c.key].name}`).join("  ·  ")}
+            </div>
+          )}
+          {v.plot.lastEvent && (
+            <div style={{ font: "500 26px/1.35 var(--font-body)", color: "rgba(237,230,214,0.6)" }}>
+              {v.plot.lastEvent.kind === "given"
+                ? `${v.plot.lastEvent.byName} handed ${PLOT_INFO[v.plot.lastEvent.key].name} to ${v.plot.lastEvent.targetName}`
+                : `${v.plot.lastEvent.byName} played ${PLOT_INFO[v.plot.lastEvent.key].name}${v.plot.lastEvent.targetName ? ` · ${v.plot.lastEvent.targetName}` : ""}`}
+            </div>
+          )}
         </div>
       )}
       <div
@@ -466,10 +549,13 @@ export function RoundTable({ v }: { v: TvView }) {
         style={{
           position: "absolute",
           bottom: 52,
-          left: 0,
-          right: 0,
+          left: 40,
+          right: 40,
           textAlign: "center",
-          font: "600 52px var(--font-serif)",
+          font: "600 48px var(--font-serif)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
         }}
       >
         {banner()}

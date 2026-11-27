@@ -56,7 +56,9 @@ export function RolesInPlay({ v }: { v: TvView }) {
         }}
       >
         {entries.map(([role, count]) => (
-          <div key={role} className="rise-in" style={{ position: "relative" }}>
+          // the row stretches every wrapper to the tallest plate, and the wrapper's own
+          // flex row stretches its plate to match, so every plate is the same height
+          <div key={role} className="rise-in" style={{ position: "relative", display: "flex" }}>
             <Plate role={role} width={width} />
             {count > 1 && (
               <div
