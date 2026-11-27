@@ -245,9 +245,22 @@ function SeatPlots({ v, playerId, small }: { v: TvView; playerId: string; small:
  * uses the stage's width rather than its height, so the bottom row stays above the banner
  * and the top row below the quest track. `top`/`bottom` are crest centres.
  */
-const TRACK = { cx: 960, top: 240, bottom: 665, halfStraight: 560, endRadius: 230 };
-/** Inside the track, below the top row's cards and above the bottom row's crests. */
-const CENTRE = { left: 360, right: 360, top: 420, height: 200 };
+const TRACK = { cx: 960, top: 240, bottom: 740, halfStraight: 560, endRadius: 230 };
+/**
+ * The table outline sits midway between the two rows of crests, so both rows look equally
+ * far from it. The top row's names and Plot cards hang into the gap above it.
+ */
+const TABLE = { left: 400, right: 400, top: 400, height: 180 };
+/** Plot text inside the table outline. */
+const CENTRE = { left: 420, right: 420, top: 410, height: 160 };
+/** Gold outline that follows a selected crest's shield shape (a filter on the parent sees the clip). */
+const SELECTED_OUTLINE = [
+  "drop-shadow(2px 0 0 var(--gold))",
+  "drop-shadow(-2px 0 0 var(--gold))",
+  "drop-shadow(0 2px 0 var(--gold))",
+  "drop-shadow(0 -2px 0 var(--gold))",
+  "drop-shadow(0 0 14px rgba(201,162,75,0.55))",
+].join(" ");
 /** Longest banner, in characters, that stays on one line at the banner's size. */
 const BANNER_CHARS = 72;
 const SEAT_W = 220;
@@ -412,10 +425,10 @@ export function RoundTable({ v }: { v: TvView }) {
       <div
         style={{
           position: "absolute",
-          left: CENTRE.left - 30,
-          right: CENTRE.right - 30,
-          top: CENTRE.top - 25,
-          height: CENTRE.height + 30,
+          left: TABLE.left,
+          right: TABLE.right,
+          top: TABLE.top,
+          height: TABLE.height,
           border: "1px solid rgba(201,162,75,0.2)",
           borderRadius: 9999,
         }}
@@ -458,7 +471,9 @@ export function RoundTable({ v }: { v: TvView }) {
                     ♛
                   </div>
                 )}
-                <Crest name={p.name} size={crest} lifted={chosen} />
+                <div style={{ filter: chosen ? SELECTED_OUTLINE : "none", transition: "filter 300ms ease-out" }}>
+                  <Crest name={p.name} size={crest} lifted={chosen} />
+                </div>
                 {voted && (
                   <div
                     className="rise-in"

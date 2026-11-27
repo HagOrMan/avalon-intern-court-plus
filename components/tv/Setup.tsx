@@ -2,7 +2,25 @@
 
 import { useState } from "react";
 import type { TvView } from "@/lib/views";
-import type { RejectionVariant, RoleKey, TimerKey } from "@/lib/types";
+import type { RoleKey, TimerKey } from "@/lib/types";
+import { InfoDot, SetupDialog, type SetupDialogState, type SetupOption } from "./SetupDialog";
+import {
+  ASSASSINATION_TEXT,
+  BLADE_TEXT,
+  GOOD_FAIL_OPTIONS,
+  LANCELOT_CARD_OPTIONS,
+  LANCELOT_EVIL_OPTIONS,
+  LANCELOT_MEET_OPTIONS,
+  LANCELOT_SCHEDULE_OPTIONS,
+  LANCELOT_VARIANTS_NOTE,
+  MODULE_TEXT,
+  OBERON_OPTIONS,
+  REJECTION_OPTIONS,
+  ROLE_TEXT,
+  TIMER_FORCE_OPTIONS,
+  TIMER_TEXT,
+  roleState,
+} from "./setupText";
 import { ROLES } from "@/lib/roles";
 import { plotDraws } from "@/lib/plots";
 import {
@@ -33,13 +51,6 @@ const TIMER_STEPS = [10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 300, 420, 600];
 function formatSecs(s: number): string {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
-
-const REJECTION_ORDER: RejectionVariant[] = ["forfeit", "official", "unopposed"];
-const REJECTION_LABEL: Record<RejectionVariant, string> = {
-  forfeit: "5 REJECTIONS ⇒ QUEST FAILS",
-  official: "5 REJECTIONS ⇒ EVIL WINS",
-  unopposed: "5TH LEADER PICKS UNOPPOSED",
-};
 
 function advisory(v: TvView): string {
   const n = v.playerCount;
@@ -94,6 +105,7 @@ export function TvSetup({
   act: (a: string, p?: Record<string, unknown>) => Promise<boolean>;
 }) {
   const [customize, setCustomize] = useState(false);
+  const [dialog, setDialog] = useState<SetupDialogState | null>(null);
   const n = v.playerCount;
   const evil = evilCount(n);
   const good = n - evil;
@@ -144,15 +156,25 @@ export function TvSetup({
     // players still join during setup, so an overfull deck is allowed; Begin refuses it
     const needs = minPlayersFor(chosen ? specials : [...specials, ...(isPair ? pair : [r])]);
     const short = needs === null || needs > n;
-    const label = isPair ? `${ROLES[r].sigil} Lancelot ×2 · one Good, one Evil` : `${ROLES[r].sigil} ${ROLES[r].name}`;
+    const label = isPair ? `${ROLES[r].sigil} Lancelot ×2` : `${ROLES[r].sigil} ${ROLES[r].name}`;
     const toggleRow = () =>
       isPair
         ? setConfig({ specials: chosen ? specials.filter((x) => !pair.includes(x)) : [...specials, ...pair] })
         : toggle(r);
     return (
       <div key={r} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ opacity: chosen ? 1 : 0.45 }}>
-          {label}
+        <span>
+          <span style={{ opacity: chosen ? 1 : 0.45 }}>{label}</span>
+          <InfoDot
+            label={isPair ? "Lancelot" : ROLES[r].name}
+            onClick={() =>
+              showInfo(
+                isPair ? "Lancelot ×2" : ROLES[r].name,
+                chosen ? "IN PLAY" : "RESTING",
+                `${roleState(chosen, isEvil(r))} ${ROLE_TEXT[r] ?? ""}`
+              )
+            }
+          />
           {chosen && blade === r && bladeTag}
           {short && !locked && (
             <span style={{ color: "var(--evil-text)", font: "600 20px var(--font-body)", marginLeft: 10 }}>
@@ -171,25 +193,84 @@ export function TvSetup({
     );
   };
 
-  const fillRow = (label: string, count: number, side: "GOOD" | "EVIL") =>
+  const showInfo = (title: string, current: string, text: string, note?: string) =>
+    setDialog({ kind: "info", title, current, text, note });
+
+  const fillRow = (role: "servant" | "minion", count: number, side: "GOOD" | "EVIL") =>
     count > 0 ? (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>{label} ×{count}</span>
+        <span>
+          {ROLES[role].shortName} ×{count}
+          <InfoDot
+            label={ROLES[role].name}
+            onClick={() => showInfo(ROLES[role].name, `×${count} · FILLS ${side}`, ROLE_TEXT[role] ?? "")}
+          />
+        </span>
         <span style={tagStyle}>FILLS {side}</span>
       </div>
     ) : null;
 
-  const switchRow = (label: string, active: boolean, onText: string, offText: string, onClick: () => void) => (
+  /** An on/off setting: the button toggles it, the ⓘ explains the current state. */
+  const switchRow = (
+    label: string,
+    active: boolean,
+    onText: string,
+    offText: string,
+    onClick: () => void,
+    info?: { on: string; off: string; note?: string }
+  ) => (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <span>{label}</span>
+      <span>
+        {label}
+        {info && (
+          <InfoDot
+            label={label}
+            onClick={() => showInfo(label, active ? onText : offText, active ? info.on : info.off, info.note)}
+          />
+        )}
+      </span>
       <button onClick={onClick} style={active ? goldBtn : ghostBtn}>
         {active ? onText : offText}
       </button>
     </div>
   );
 
+  /**
+   * A setting with named options: the button opens a selector listing every option and what
+   * it means, and the ⓘ opens the same list.
+   */
+  const choiceRow = <K extends string>(
+    label: string,
+    options: SetupOption<K>[],
+    selected: K,
+    onPick: (key: K) => void,
+    note?: string
+  ) => {
+    const open = () =>
+      setDialog({
+        kind: "choose",
+        title: label,
+        options,
+        selected,
+        note,
+        onPick: (key) => onPick(key as K),
+      });
+    const current = options.find((o) => o.key === selected);
+    return (
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span>
+          {label}
+          <InfoDot label={label} onClick={open} />
+        </span>
+        <button onClick={open} style={goldBtn}>
+          {current?.label ?? selected} ▾
+        </button>
+      </div>
+    );
+  };
+
   return (
-    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 80 }}>
+    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 64 }}>
       <div style={{ width: 800, background: "var(--surface)", border: "1px solid rgba(201,162,75,0.5)", padding: 48 }}>
         <div className="serif" style={{ font: "700 60px var(--font-serif)", color: "var(--gold)", marginBottom: 8 }}>
           Court Setup — {n} players
@@ -213,19 +294,23 @@ export function TvSetup({
         </div>
         <div style={{ display: "grid", gap: 14, font: "500 28px var(--font-body)" }}>
           {goodOptions.map(roleRow)}
-          {fillRow("Servant", servantCount, "GOOD")}
+          {fillRow("servant", servantCount, "GOOD")}
           {roleRow("lancelotGood")}
           {evilOptions.map(roleRow)}
           {assassinCard && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span>
                 {ROLES.assassin.sigil} {ROLES.assassin.name}
+                <InfoDot
+                  label={ROLES.assassin.name}
+                  onClick={() => showInfo(ROLES.assassin.name, "FREE SEAT", ROLE_TEXT.assassin ?? "")}
+                />
                 {bladeTag}
               </span>
               <span style={tagStyle}>FREE SEAT</span>
             </div>
           )}
-          {fillRow("Minion", minionCount, "EVIL")}
+          {fillRow("minion", minionCount, "EVIL")}
         </div>
         <div
           className="serif"
@@ -256,7 +341,7 @@ export function TvSetup({
         </button>
       </div>
 
-      <div style={{ width: 620 }}>
+      <div style={{ width: 760 }}>
         <div style={{ font: "600 24px var(--font-body)", letterSpacing: "0.18em", color: "rgba(237,230,214,0.5)", marginBottom: 20 }}>
           MISSIONS AT {n} PLAYERS
         </div>
@@ -304,35 +389,40 @@ export function TvSetup({
               v.config.ladyOfTheLake,
               "◈ CHECKS AFTER QUESTS 2–4",
               "OFF",
-              () => setConfig({ ladyOfTheLake: !v.config.ladyOfTheLake })
+              () => setConfig({ ladyOfTheLake: !v.config.ladyOfTheLake }),
+              MODULE_TEXT.lady
             )}
             {switchRow(
               "Excalibur",
               v.config.excalibur,
               "⚔ LEADER ARMS A RIDER",
               "OFF",
-              () => setConfig({ excalibur: !v.config.excalibur })
+              () => setConfig({ excalibur: !v.config.excalibur }),
+              MODULE_TEXT.excalibur
             )}
             {switchRow(
               "Trapper",
               v.config.trapper,
               "⌖ ONE EXTRA RIDER, ONE CARD TRAPPED",
               "OFF",
-              () => setConfig({ trapper: !v.config.trapper })
+              () => setConfig({ trapper: !v.config.trapper }),
+              MODULE_TEXT.trapper
             )}
             {switchRow(
               "Targeting",
               v.config.targeting,
               "◎ LEADER PICKS THE QUEST",
               "OFF · QUESTS IN ORDER",
-              () => setConfig({ targeting: !v.config.targeting })
+              () => setConfig({ targeting: !v.config.targeting }),
+              MODULE_TEXT.targeting
             )}
             {switchRow(
               "Plot cards",
               v.config.plotCards,
               `★ LEADER DRAWS ${plotDraws(n)} A ROUND`,
               "OFF",
-              () => setConfig({ plotCards: !v.config.plotCards })
+              () => setConfig({ plotCards: !v.config.plotCards }),
+              MODULE_TEXT.plot(plotDraws(n))
             )}
             <div style={{ font: "400 20px/1.5 var(--font-body)", color: "var(--parchment-55)" }}>
               Targeting: any unattempted quest, but the 5th only after two others succeed.
@@ -355,7 +445,13 @@ export function TvSetup({
               };
               return (
                 <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span>{label}</span>
+                  <span>
+                    {label}
+                    <InfoDot
+                      label={`${label} timer`}
+                      onClick={() => showInfo(`${label} timer`, formatSecs(secs), TIMER_TEXT[key])}
+                    />
+                  </span>
                   <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <button style={ghostBtn} onClick={() => step(-1)} disabled={secs <= TIMER_MIN_S}>−</button>
                     <span style={{ minWidth: 90, textAlign: "center" }}>{formatSecs(secs)}</span>
@@ -364,12 +460,8 @@ export function TvSetup({
                 </div>
               );
             })}
-            {switchRow(
-              "At zero",
-              v.config.timerForce,
-              "FORCE · RANDOM CHOICE",
-              "JUST A REMINDER",
-              () => setConfig({ timerForce: !v.config.timerForce })
+            {choiceRow("At zero", TIMER_FORCE_OPTIONS, v.config.timerForce ? "force" : "remind", (k) =>
+              setConfig({ timerForce: k === "force" })
             )}
             <div style={{ font: "400 20px/1.5 var(--font-body)", color: "var(--parchment-55)" }}>
               Countdowns show on the TV only. Forcing picks at random for anyone who hasn&apos;t
@@ -381,39 +473,33 @@ export function TvSetup({
           </div>
         ) : customize && panel === "lancelot" && lancelotOn ? (
           <div style={{ marginTop: 64, display: "grid", gap: 16, font: "500 24px var(--font-body)" }}>
-            {switchRow(
+            {choiceRow(
               "Allegiance cards",
-              v.config.lancelotSchedule !== "none",
-              v.config.lancelotSchedule === "hidden"
-                ? "HIDDEN · FLIPPED ROUNDS 3–5"
-                : "KNOWN · 5 DEALT FACE UP",
-              "NONE · NO SWITCHES",
-              () => {
-                const order = ["hidden", "known", "none"] as const;
-                const i = order.indexOf(v.config.lancelotSchedule);
-                setConfig({ lancelotSchedule: order[(i + 1) % order.length] });
-              }
+              LANCELOT_SCHEDULE_OPTIONS,
+              v.config.lancelotSchedule,
+              (k) => setConfig({ lancelotSchedule: k }),
+              LANCELOT_VARIANTS_NOTE
             )}
-            {switchRow(
+            {choiceRow(
               "Quest cards",
-              v.config.lancelotForcedCards,
-              "FORCED BY CURRENT SIDE",
-              "FREE CHOICE",
-              () => setConfig({ lancelotForcedCards: !v.config.lancelotForcedCards })
+              LANCELOT_CARD_OPTIONS,
+              v.config.lancelotForcedCards ? "forced" : "free",
+              (k) => setConfig({ lancelotForcedCards: k === "forced" }),
+              LANCELOT_VARIANTS_NOTE
             )}
-            {switchRow(
+            {choiceRow(
               "Evil at night",
-              v.config.lancelotEvilKnown,
-              "SEES THE EVIL LANCELOT",
-              "DOESN'T SEE HIM",
-              () => setConfig({ lancelotEvilKnown: !v.config.lancelotEvilKnown })
+              LANCELOT_EVIL_OPTIONS,
+              v.config.lancelotEvilKnown ? "sees" : "blind",
+              (k) => setConfig({ lancelotEvilKnown: k === "sees" }),
+              LANCELOT_VARIANTS_NOTE
             )}
-            {switchRow(
+            {choiceRow(
               "Lancelots at night",
-              v.config.lancelotsMeet,
-              "SEE EACH OTHER",
-              "DON'T MEET",
-              () => setConfig({ lancelotsMeet: !v.config.lancelotsMeet })
+              LANCELOT_MEET_OPTIONS,
+              v.config.lancelotsMeet ? "meet" : "apart",
+              (k) => setConfig({ lancelotsMeet: k === "meet" }),
+              LANCELOT_VARIANTS_NOTE
             )}
             <div style={{ font: "400 20px/1.5 var(--font-body)", color: "var(--parchment-55)" }}>
               Officially only one variant is used at a time. V1: hidden cards, free choice,
@@ -426,16 +512,12 @@ export function TvSetup({
         ) : customize ? (
           <div style={{ marginTop: 64, display: "grid", gap: 16, font: "500 24px var(--font-body)" }}>
             {lancelotOn &&
-              switchRow("Lancelot variants", true, "EDIT ›", "", () => setPanel("lancelot"))}
-            {switchRow(
-              "Rejection rule",
-              true,
-              REJECTION_LABEL[v.config.rejectionVariant],
-              "",
-              () => {
-                const i = REJECTION_ORDER.indexOf(v.config.rejectionVariant);
-                setConfig({ rejectionVariant: REJECTION_ORDER[(i + 1) % REJECTION_ORDER.length] });
-              }
+              switchRow("Lancelot variants", true, "EDIT ›", "", () => setPanel("lancelot"), {
+                on: LANCELOT_VARIANTS_NOTE,
+                off: LANCELOT_VARIANTS_NOTE,
+              })}
+            {choiceRow("Rejection rule", REJECTION_OPTIONS, v.config.rejectionVariant, (k) =>
+              setConfig({ rejectionVariant: k })
             )}
             {switchRow(
               "Assassination",
@@ -448,32 +530,47 @@ export function TvSetup({
                   ? "✕ EVIL NAMES GUINEVERE"
                   : "✕ ON · NO ONE TO NAME",
               "OFF — QUESTS ALONE DECIDE",
-              () => setConfig({ assassination: !v.config.assassination })
+              () => setConfig({ assassination: !v.config.assassination }),
+              {
+                on: on("merlin") || on("guinevere") ? ASSASSINATION_TEXT.on : ASSASSINATION_TEXT.onNoMark,
+                off: ASSASSINATION_TEXT.off,
+              }
             )}
             {blade &&
               bladeChoices.length > 1 &&
-              switchRow("Assassin's blade", true, `✕ ${ROLES[blade].name.toUpperCase()}`, "", () => {
-                const i = bladeChoices.indexOf(blade);
-                setConfig({ assassinFlag: bladeChoices[(i + 1) % bladeChoices.length] });
-              })}
-            {on("oberon") &&
-              switchRow(
-                "Oberon",
-                v.config.oberonHiddenFromMerlin,
-                "HIDDEN FROM MERLIN TOO",
-                "MERLIN SEES HIM",
-                () => setConfig({ oberonHiddenFromMerlin: !v.config.oberonHiddenFromMerlin })
+              choiceRow(
+                "Assassin's blade",
+                bladeChoices.map((r) => ({
+                  key: r,
+                  label: `✕ ${ROLES[r].name.toUpperCase()}`,
+                  text: BLADE_TEXT[r] ?? "",
+                })),
+                blade,
+                (k) => setConfig({ assassinFlag: k }),
+                "Only roles in the deck can carry the blade, and the Assassin card only while an Evil seat is free. A Lancelot never carries it."
               )}
-            {switchRow(
-              "Quest cards",
-              v.config.goodMayFail,
-              "ANYONE MAY FAIL",
-              "GOOD MUST SUCCEED",
-              () => setConfig({ goodMayFail: !v.config.goodMayFail })
+            {on("oberon") &&
+              choiceRow("Oberon", OBERON_OPTIONS, v.config.oberonHiddenFromMerlin ? "hidden" : "seen", (k) =>
+                setConfig({ oberonHiddenFromMerlin: k === "hidden" })
+              )}
+            {choiceRow("Quest cards", GOOD_FAIL_OPTIONS, v.config.goodMayFail ? "may" : "must", (k) =>
+              setConfig({ goodMayFail: k === "may" })
             )}
             {switchRow("Modules", true, modulesSummary ? `${modulesSummary} ›` : "NONE · EDIT ›", "", () => setPanel("modules"))}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>Timers</span>
+              <span>
+                Timers
+                <InfoDot
+                  label="Timers"
+                  onClick={() =>
+                    showInfo(
+                      "Timers",
+                      v.config.timers ? (v.config.timerForce ? "ON · FORCED" : "ON") : "OFF",
+                      v.config.timers ? MODULE_TEXT.timers.on : MODULE_TEXT.timers.off
+                    )
+                  }
+                />
+              </span>
               <span style={{ display: "flex", gap: 10 }}>
                 <button
                   onClick={() => setConfig({ timers: !v.config.timers })}
@@ -513,6 +610,7 @@ export function TvSetup({
           </div>
         </div>
       </div>
+      {dialog && <SetupDialog state={dialog} onClose={() => setDialog(null)} />}
     </div>
   );
 }
