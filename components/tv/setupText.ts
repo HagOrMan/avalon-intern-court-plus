@@ -109,7 +109,7 @@ export const MODULE_TEXT = {
     off: "No Plot cards.",
   }),
   timers: {
-    on: "A countdown shows on the TV for each decision (the role reveal has none). Set each length, and what happens at zero, under Edit.",
+    on: "A countdown shows on the TV for each decision (the role reveal has none). By default it's only a reminder: at zero it reads TIME and nothing happens. Under Edit, set each length, and set At zero to Force to make random choices for anyone who hasn't decided.",
     off: "No countdowns.",
   },
 };
@@ -191,7 +191,7 @@ export const LANCELOT_MEET_OPTIONS: SetupOption<"apart" | "meet">[] = [
   {
     key: "meet",
     label: "SEE EACH OTHER",
-    text: "Variant 3. The two Lancelots see each other at night (not their sides). Recommended for larger groups.",
+    text: "Variant 3. The two Lancelots see each other at night. Each knows his own side, so each also knows the other is on the opposite one, and after a switch they still are. Recommended for larger groups.",
   },
 ];
 

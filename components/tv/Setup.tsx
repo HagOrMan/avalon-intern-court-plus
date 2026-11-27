@@ -210,7 +210,10 @@ export function TvSetup({
       </div>
     ) : null;
 
-  /** An on/off setting: the button toggles it, the ⓘ explains the current state. */
+  /**
+   * An on/off setting: the button toggles it. The ⓘ explains the current state, and when the
+   * setting is off it also says what turning it on would do.
+   */
   const switchRow = (
     label: string,
     active: boolean,
@@ -225,7 +228,14 @@ export function TvSetup({
         {info && (
           <InfoDot
             label={label}
-            onClick={() => showInfo(label, active ? onText : offText, active ? info.on : info.off, info.note)}
+            onClick={() =>
+              showInfo(
+                label,
+                active ? onText : offText,
+                active ? info.on : `${info.off} When on: ${info.on}`,
+                info.note
+              )
+            }
           />
         )}
       </span>
@@ -566,7 +576,9 @@ export function TvSetup({
                     showInfo(
                       "Timers",
                       v.config.timers ? (v.config.timerForce ? "ON · FORCED" : "ON") : "OFF",
-                      v.config.timers ? MODULE_TEXT.timers.on : MODULE_TEXT.timers.off
+                      v.config.timers
+                        ? MODULE_TEXT.timers.on
+                        : `${MODULE_TEXT.timers.off} When on: ${MODULE_TEXT.timers.on}`
                     )
                   }
                 />
